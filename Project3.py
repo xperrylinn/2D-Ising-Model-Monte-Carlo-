@@ -6,4 +6,6 @@ print("Hello world")
 
 # Make a 2D Grid
 # Generate random elements
+# Create a periodic indexing function
+
 # etc..
