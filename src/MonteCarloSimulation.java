@@ -59,7 +59,13 @@ public class MonteCarloSimulation {
         from 0 to L - 1. Given L, return 0. Given -1 give L - 1.
      */
     public void getElement(int i, int j) {
+        if (false) { // If i, j is in the boundary size x size
 
+        } else if (false) {
+
+        } else {
+
+        }
     }
 
     public static void main(String[] args) {
