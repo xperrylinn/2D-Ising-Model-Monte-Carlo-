@@ -85,34 +85,55 @@ class MonteCarloSimulation:
         print("Caclulating the total energy")
         # Iterate through the 2D array calculate
         # Sum up the energy in the totalEnergy cache variable
-        print(self.twoDArray.printArray())
-        print(self.totalEnergy)
+        #print(self.twoDArray.printArray())
+        #print(self.totalEnergy)
         for i in range(0, self.size - 1):
             for j in range(0, self.size - 1):
                 self.totalEnergy += self.twoDArray.alloy[i][j]*(self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1))
-        print(self.totalEnergy)
+        #print(self.totalEnergy)
 
 
     # Calculate change in energy:
     # calculates the energy between two iterations
-    def caclulateDeltaEnergy(self):
+    def flipSpinCalcNewEnergy(self):
         print("Caclulating the change in energy")
 
         # Select a random site i, j
         i = np.random.randint(0, self.size)
         j = np.random.randint(0, self.size)
 
+        #
+        print("site: ",i ," ",j)
+
+        #
+        print("Total energy before flip", self.totalEnergy)
+
         #Calcualte energy contributution at side i,j before flip
         energyContributionBeforeFlip = self.twoDArray.alloy[i][j] * (self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1) + self.twoDArray.stateAtIndexI(i - 1, j) + self.twoDArray.stateAtIndexJ(i, j - 1))
         print("Energy contribution at i,j before flip: ", energyContributionBeforeFlip)
 
+        # Subtract energy contribution at site i,j before flip from total energy
+        self.totalEnergy -= energyContributionBeforeFlip
+
+        #
+        print("Printing array before splin flip")
+        self.twoDArray.printArray()
+
         # Change the spin at a random site
         self.twoDArray.changeState(i, j)
+
+        #
+        print("Printing array after splin flip")
+        self.twoDArray.printArray()
+
         energyContributionAfterFlip = self.twoDArray.alloy[i][j] * (self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1) + self.twoDArray.stateAtIndexI(i - 1, j) + self.twoDArray.stateAtIndexJ(i, j - 1))
         print("Energy contribution at i,j after flip: ", energyContributionAfterFlip)
 
-        # Return the change in energy occured when flipping spin at site i, j
-        return energyContributionAfterFlip - energyContributionBeforeFlip
+        # Subtract energy contribution at site i,j before flip from total energy
+        self.totalEnergy += energyContributionAfterFlip
+
+        print("Total energy after flip", self.totalEnergy)
+
 
 
     # Accept the spin flip or not
@@ -138,8 +159,7 @@ class MonteCarloSimulation:
 # Test a totalEnergy calculation
 mD = MonteCarloSimulation(6)
 mD.calculateTotalEnergy()
-mD.twoDArray.printArray()
-mD.caclulateDeltaEnergy()
+mD.flipSpinCalcNewEnergy()
 
 #print("Testing indexing i, on edge cases")
 #print("(-1, 0):", test.stateAtIndexI(-1,0))
