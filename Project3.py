@@ -80,6 +80,7 @@ class MonteCarloSimulation:
     def printTotalEnergyVsTime(self):
         print("Should be plotting now")
         plt.plotfile('energyVsTime.txt', delimiter=' ', cols=(0, 1), names=('Total Energy', 'Time'), marker='o')
+        plt.show()
 
 
     # Calculate the total energy
