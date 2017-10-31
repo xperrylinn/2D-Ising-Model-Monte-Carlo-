@@ -5,6 +5,7 @@
 
 # Import statements
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Generate random elements
 # Create a periodic indexing function
@@ -74,7 +75,11 @@ class MonteCarloSimulation:
         self.twoDArray = TwoDArray(s)
         self.totalEnergy = 0
         self.size = s
+        self.time = 0
 
+    def printTotalEnergyVsTime(self):
+        print("Should be plotting now")
+        plt.plotfile('energyVsTime.txt', delimiter=' ', cols=(0, 1), names=('Total Energy', 'Time'), marker='o')
 
 
     # Calculate the total energy
@@ -87,9 +92,18 @@ class MonteCarloSimulation:
         # Sum up the energy in the totalEnergy cache variable
         #print(self.twoDArray.printArray())
         #print(self.totalEnergy)
+
+        # At each time step (i.e. one spin flip), record the energy and the step number
+        # to a data file to be ploted
+        file = open("energyVsTime.txt", "w")
         for i in range(0, self.size - 1):
             for j in range(0, self.size - 1):
+                self.time += 1
                 self.totalEnergy += self.twoDArray.alloy[i][j]*(self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1))
+                file.write(str(self.time) + " " + str(self.totalEnergy) + '\n')
+        file.close()
+
+
         #print(self.totalEnergy)
 
 
@@ -140,6 +154,7 @@ class MonteCarloSimulation:
     def acceptFlipOrNot(self):
         print("Determining to accept spin flip or not")
 
+
 # Notes: Set J = 1 in equation 7
 # Set H = 0 in equation 7
 #
@@ -160,6 +175,7 @@ class MonteCarloSimulation:
 mD = MonteCarloSimulation(6)
 mD.calculateTotalEnergy()
 mD.flipSpinCalcNewEnergy()
+mD.printTotalEnergyVsTime()
 
 #print("Testing indexing i, on edge cases")
 #print("(-1, 0):", test.stateAtIndexI(-1,0))
