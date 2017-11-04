@@ -60,7 +60,10 @@ class TwoDArray:
             return self.alloy[i][j]
 
     # Change state at index i, j
-    def changeState(self, i, j):
+    def changeState(self, site):
+        #print(site)
+        i = site[0]
+        j = site[1]
         currentState = self.alloy[i][j]
         if currentState == 1:
             self.alloy[i][j] = -1
@@ -68,7 +71,7 @@ class TwoDArray:
             self.alloy[i][j] = 1
 
 # This class will run the simulation
-class MonteCarloSimulation:
+class MonteCarlo:
 
     # Instantiate a  Monte Carlo Simulation
     def __init__(self, s):
@@ -76,117 +79,118 @@ class MonteCarloSimulation:
         self.totalEnergy = 0
         self.size = s
         self.time = 0
+        self.temperature = 1
+        self.boltzmanConstant = 1
+        self.beta = 1 / (self.temperature * self.boltzmanConstant)
 
-    def printTotalEnergyVsTime(self):
-        print("Should be plotting now")
-        plt.plotfile('energyVsTime.txt', delimiter=' ', cols=(0, 1), names=('Total Energy', 'Time'), marker='o')
+    # Plot total energy vs time
+    def totalEnergyVsTime(self):
+        #print("Should be plotting now")
+        plt.plotfile('energyVsTime.txt', delimiter=' ', cols=(0, 1), names=('Time', 'Total Energy'), marker='o')
         plt.show()
 
+    # Plot avg mag vs time
+    def magVsTime(self):
+        #print("Should be plotting now")
+        plt.plotfile('avgMagVsTime.txt', delimiter=' ', cols=(0, 1), names=('Time', 'Average Magnetization'), marker='o')
+        plt.show()
 
-    # Calculate the total energy
-    # Toatl energt eq.
-    # J*Sum(i = 0 to L-1)Sum(j = 0 to L -1)(s(i,j)s(i,j+1)+s(i,j)s(i+1,j)) - H*Sum(i = 0 to L-1)Sum(j = 0 to L -1)(s(i,j))
-    # Set J = 1, H = 0
-    def calculateTotalEnergy(self):
-        print("Caclulating the total energy")
-        # Iterate through the 2D array calculate
-        # Sum up the energy in the totalEnergy cache variable
-        #print(self.twoDArray.printArray())
-        #print(self.totalEnergy)
-
-        # At each time step (i.e. one spin flip), record the energy and the step number
-        # to a data file to be ploted
-        file = open("energyVsTime.txt", "w")
-        for i in range(0, self.size - 1):
-            for j in range(0, self.size - 1):
-                self.time += 1
+    # Calculate the initial total energy, i.e. before any spins have been flipped
+    def calculateInitialTotalEnergy(self):
+        for i in range(0, self.size):
+            for j in range(0, self.size):
                 self.totalEnergy += self.twoDArray.alloy[i][j]*(self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1))
-                file.write(str(self.time) + " " + str(self.totalEnergy) + '\n')
-        file.close()
+        self.totalEnergy *= (-1)
 
+    # Calculate the initial total energy, i.e. before any spins have been flipped
+    def calculateTotalEnergy(self):
+        energy = 0
+        for i in range(0, self.size):
+            for j in range(0, self.size):
+                energy += self.twoDArray.alloy[i][j]*(self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1))
+        return energy * (-1)
 
-        #print(self.totalEnergy)
-
+    # Returns a random site as a tuple (i, j)
+    def generateRandomSite(self):
+        i = np.random.randint(0, self.size)
+        j = np.random.randint(0, self.size)
+        return (i, j)
 
     # Calculate change in energy:
     # calculates the energy between two iterations
-    def flipSpinCalcNewEnergy(self):
-        print("Caclulating the change in energy")
+    def energyContributionAtSite(self, site):
+        i = site[0]
+        j = site[1]
+        energyContribution = (-1) * self.twoDArray.alloy[i][j] * (self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1) + self.twoDArray.stateAtIndexI(i - 1, j) + self.twoDArray.stateAtIndexJ(i, j - 1))
+        return energyContribution
 
-        # Select a random site i, j
-        i = np.random.randint(0, self.size)
-        j = np.random.randint(0, self.size)
-
-        #
-        print("site: ",i ," ",j)
-
-        #
-        print("Total energy before flip", self.totalEnergy)
-
-        #Calcualte energy contributution at side i,j before flip
-        energyContributionBeforeFlip = self.twoDArray.alloy[i][j] * (self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1) + self.twoDArray.stateAtIndexI(i - 1, j) + self.twoDArray.stateAtIndexJ(i, j - 1))
-        print("Energy contribution at i,j before flip: ", energyContributionBeforeFlip)
-
-        # Subtract energy contribution at site i,j before flip from total energy
-        self.totalEnergy -= energyContributionBeforeFlip
-
-        #
-        print("Printing array before splin flip")
-        self.twoDArray.printArray()
-
-        # Change the spin at a random site
-        self.twoDArray.changeState(i, j)
-
-        #
-        print("Printing array after splin flip")
-        self.twoDArray.printArray()
-
-        energyContributionAfterFlip = self.twoDArray.alloy[i][j] * (self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1) + self.twoDArray.stateAtIndexI(i - 1, j) + self.twoDArray.stateAtIndexJ(i, j - 1))
-        print("Energy contribution at i,j after flip: ", energyContributionAfterFlip)
-
-        # Subtract energy contribution at site i,j before flip from total energy
-        self.totalEnergy += energyContributionAfterFlip
-
-        print("Total energy after flip", self.totalEnergy)
-
-
+    # Determines the energy after a Monte Carlo time step (a spin flip attemp)
+    def calculateTotalEnergyAfterSpinFlip(self, site):
+        #self.twoDArray.printArray()
+        initialEnergy = self.totalEnergy
+        energyContributionAtSiteBeforeFlip = self.energyContributionAtSite(site)
+        self.twoDArray.changeState(site)
+        energyContributionAtSiteAfterFlip = self.energyContributionAtSite(site)
+        finalEnergy = initialEnergy - energyContributionAtSiteBeforeFlip + energyContributionAtSiteAfterFlip
+        return finalEnergy
 
     # Accept the spin flip or not
-    def acceptFlipOrNot(self):
-        print("Determining to accept spin flip or not")
+    def acceptFlipOrNot(self, newEnergy):
+        energyChange = newEnergy - self.totalEnergy
+        if (energyChange <= 0):
+            return True
+        else:
+            boltzman = np.exp(-1 * energyChange)
+            eta = np.random.random_sample()
+            if (eta < boltzman): # If eta < boltzman factor, ACCEPT
+                return True
+            else: # If eta >= boltzman factor, REJECT
+                return False
 
+    # Calculates the average magnetization per site
+    def caclulateAvgMagnetization(self):
+        sum = np.sum(self.twoDArray.alloy, None, float) / np.power(self.size, 2)
+        return sum
 
-# Notes: Set J = 1 in equation 7
-# Set H = 0 in equation 7
-#
-#
-
-
-
+    # Metropolis Alogrithm
+    def metropolisAlgorithm(self, steps):
+        print("Running MD Simulation")
+        print("size: ", self.size)
+        print("steps: ", steps)
+        fileE = open("energyVsTime.txt", "w")
+        fileM = open("avgMagVsTime.txt", "w")
+        self.twoDArray.printArray()
+        # 1. Establish an initial configuration of moments.
+        self.calculateInitialTotalEnergy()
+        for i in range(0, steps):
+            # 2. Select a random moment. Compute change in change
+            #    in energy associated with flipping the spin.
+            site = self.generateRandomSite()
+            #self.twoDArray.changeState(site)
+            #newTotalEnergyEnergy = self.calculateTotalEnergy()
+            newTotalEnergyEnergy = self.calculateTotalEnergyAfterSpinFlip(site)
+            # 3. Accept or reject the spin flip.
+            flip = self.acceptFlipOrNot(newTotalEnergyEnergy)
+            if (flip):
+                self.totalEnergy = newTotalEnergyEnergy
+            else:
+                self.twoDArray.changeState(site)
+            if (i % 300 == 0):
+                self.time += 1
+                fileE.write(str(self.time) + " " + str((self.totalEnergy + 0.0)) + '\n')
+                fileM.write(str(self.time) + " " + str(self.caclulateAvgMagnetization()) + '\n')
+            # 4. Compute quantities of interest: Magnetization, Total Energy
+            # 5. Repeat from step 2 as needed.
+        fileE.close()
+        fileM.close()
+        # 6. Analyze the results of the simulation.
+        self.totalEnergyVsTime()
+        self.magVsTime()
 
 #################
 ######TEST#######
 #################
 
-# Create a test TwoDArray with random
-#test = TwoDArrary(4)
-#test.printArray()
+mD = MonteCarlo(32)
+mD.metropolisAlgorithm(307200)
 
-# Test a totalEnergy calculation
-mD = MonteCarloSimulation(6)
-mD.calculateTotalEnergy()
-mD.flipSpinCalcNewEnergy()
-mD.printTotalEnergyVsTime()
-
-#print("Testing indexing i, on edge cases")
-#print("(-1, 0):", test.stateAtIndexI(-1,0))
-#print("(4, 0):", test.stateAtIndexI(4,0))
-#print("Testing indexing j, on edge cases")
-#print("(0, -1):", test.stateAtIndexJ(0,-1))
-#print("(0, 4):", test.stateAtIndexJ(0,4))
-#print("Now change the state at index i, j = 1, 1")
-#print("before: ", test.alloy[1][1])
-#print("Calling change state..")
-#test.changeState(1,1)
-#print("after: ", test.alloy[1][1])
-#test.printArray()
