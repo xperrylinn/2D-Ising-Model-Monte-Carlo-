@@ -74,12 +74,12 @@ class TwoDArray:
 class MonteCarlo:
 
     # Instantiate a  Monte Carlo Simulation
-    def __init__(self, s):
+    def __init__(self, s, temp):
         self.twoDArray = TwoDArray(s)
         self.totalEnergy = 0
         self.size = s
         self.time = 0
-        self.temperature = 1
+        self.temperature = temp
         self.boltzmanConstant = 1
         self.beta = 1 / (self.temperature * self.boltzmanConstant)
 
@@ -140,7 +140,7 @@ class MonteCarlo:
         if (energyChange <= 0):
             return True
         else:
-            boltzman = np.exp(-1 * energyChange)
+            boltzman = np.exp(-1 * self.beta * energyChange)
             eta = np.random.random_sample()
             if (eta < boltzman): # If eta < boltzman factor, ACCEPT
                 return True
@@ -149,7 +149,7 @@ class MonteCarlo:
 
     # Calculates the average magnetization per site
     def caclulateAvgMagnetization(self):
-        sum = np.sum(self.twoDArray.alloy, None, float) / np.power(self.size, 2)
+        sum = abs(np.sum(self.twoDArray.alloy, None, float) / np.power(self.size, 2))
         return sum
 
     # Metropolis Alogrithm
@@ -178,6 +178,7 @@ class MonteCarlo:
             if (i % 300 == 0):
                 self.time += 1
                 fileE.write(str(self.time) + " " + str((self.totalEnergy + 0.0)) + '\n')
+
                 fileM.write(str(self.time) + " " + str(self.caclulateAvgMagnetization()) + '\n')
             # 4. Compute quantities of interest: Magnetization, Total Energy
             # 5. Repeat from step 2 as needed.
@@ -187,10 +188,20 @@ class MonteCarlo:
         self.totalEnergyVsTime()
         self.magVsTime()
 
+    def autocorr(x):
+        result = np.correlate(x, x, 'same')
+        return result[result.size/2:]
+
 #################
 ######TEST#######
 #################
+#mD4T1 = MonteCarlo(4,1)
+#mD8T1 = MonteCarlo(8,1)
+#mD16T1 = MonteCarlo(16,1)
+#mD32T1 = MonteCarlo(32,1)
 
-mD = MonteCarlo(32)
-mD.metropolisAlgorithm(307200)
+mDT1 = MonteCarlo(32, 1)
+mDT1.metropolisAlgorithm(307200)
+#mDT10 = MonteCarlo(32, 10)
+#mDT10.metropolisAlgorithm(307200)
 
