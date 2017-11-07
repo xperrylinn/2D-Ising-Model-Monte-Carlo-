@@ -189,9 +189,37 @@ class MonteCarlo:
         self.totalEnergyVsTime()
         self.magVsTime()
 
-    def autocorr(x):
-        result = np.correlate(x, x, 'same')
-        return result[result.size/2:]
+    def autocorr(self, x):
+        result = np.correlate(x, x, 'full')
+        plt.plot(result)
+        plt.show()
+        #return result[result.size/2:]
+
+    def estimated_autocorrelation(self, x):
+        n = len(x)
+        variance = x.var()
+        x = x-x.mean()
+        r = np.correlate(x, x, mode = 'full')[-n:]
+        #assert N.allclose(r, N.array([(x[:n-k]*x[-(n-k):]).sum() for k in range(n)]))
+        result = r/(variance*(np.arange(n, 0, -1)))
+        print("THE ZERO IS APPROX AT INDEX ", self.findZeroIndex(result))
+        plt.plot(result)
+        plt.show()
+
+    def findZeroIndex(self, x):
+        i = 0
+        j = 1
+        for v in x:
+            #print("v: ", v)
+            #print("x[i]: ", x[i])
+            #print("x[j]: ", x[j])
+            if x[i] > 0 and x[j] < 0:
+                #print("THE VALUE IS: ", v)
+                #print("THE INDEX IS: ", i)
+                return i
+            i += 1
+            j += 1
+
 
 #################
 ######TEST#######
@@ -203,6 +231,8 @@ class MonteCarlo:
 
 mDT1 = MonteCarlo(32, 1)
 mDT1.metropolisAlgorithm(307200)
+#mDT1.autocorr(mDT1.avgMagArray)
+mDT1.estimated_autocorrelation(mDT1.avgMagArray)
 #mDT10 = MonteCarlo(32, 10)
 #mDT10.metropolisAlgorithm(307200)
 
