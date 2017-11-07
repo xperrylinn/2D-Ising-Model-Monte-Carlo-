@@ -82,17 +82,19 @@ class MonteCarlo:
         self.temperature = temp
         self.boltzmanConstant = 1
         self.beta = 1 / (self.temperature * self.boltzmanConstant)
+        self.avgMagArray = np.array
+        self.energyArray = np.array
 
     # Plot total energy vs time
     def totalEnergyVsTime(self):
         #print("Should be plotting now")
-        plt.plotfile('energyVsTime.txt', delimiter=' ', cols=(0, 1), names=('Time', 'Total Energy'), marker='o')
+        plt.plot(self.energyArray)
         plt.show()
 
     # Plot avg mag vs time
     def magVsTime(self):
         #print("Should be plotting now")
-        plt.plotfile('avgMagVsTime.txt', delimiter=' ', cols=(0, 1), names=('Time', 'Average Magnetization'), marker='o')
+        plt.plot(self.avgMagArray)
         plt.show()
 
     # Calculate the initial total energy, i.e. before any spins have been flipped
@@ -148,8 +150,8 @@ class MonteCarlo:
                 return False
 
     # Calculates the average magnetization per site
-    def caclulateAvgMagnetization(self):
-        sum = abs(np.sum(self.twoDArray.alloy, None, float) / np.power(self.size, 2))
+    def calculateAvgMagnetization(self):
+        sum = abs((np.sum(self.twoDArray.alloy, None, float) + 0.0) / np.power(self.size, 2))
         return sum
 
     # Metropolis Alogrithm
@@ -157,8 +159,10 @@ class MonteCarlo:
         print("Running MD Simulation")
         print("size: ", self.size)
         print("steps: ", steps)
-        fileE = open("energyVsTime.txt", "w")
-        fileM = open("avgMagVsTime.txt", "w")
+        #fileE = open("energyVsTime.txt", "w")
+        self.avgMagArray = np.arange(steps / 300, dtype=np.float)
+        #fileM = open("avgMagVsTime.txt", "w")
+        self.energyArray = np.arange(steps / 300)
         self.twoDArray.printArray()
         # 1. Establish an initial configuration of moments.
         self.calculateInitialTotalEnergy()
@@ -176,14 +180,11 @@ class MonteCarlo:
             else:
                 self.twoDArray.changeState(site)
             if (i % 300 == 0):
+                self.avgMagArray[self.time] = self.calculateAvgMagnetization()
+                self.energyArray[self.time] = self.totalEnergy
                 self.time += 1
-                fileE.write(str(self.time) + " " + str((self.totalEnergy + 0.0)) + '\n')
-
-                fileM.write(str(self.time) + " " + str(self.caclulateAvgMagnetization()) + '\n')
             # 4. Compute quantities of interest: Magnetization, Total Energy
             # 5. Repeat from step 2 as needed.
-        fileE.close()
-        fileM.close()
         # 6. Analyze the results of the simulation.
         self.totalEnergyVsTime()
         self.magVsTime()
