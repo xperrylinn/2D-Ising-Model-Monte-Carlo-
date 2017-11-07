@@ -163,7 +163,7 @@ class MonteCarlo:
         self.avgMagArray = np.arange(steps / 300, dtype=np.float)
         #fileM = open("avgMagVsTime.txt", "w")
         self.energyArray = np.arange(steps / 300)
-        self.twoDArray.printArray()
+        #self.twoDArray.printArray()
         # 1. Establish an initial configuration of moments.
         self.calculateInitialTotalEnergy()
         for i in range(0, steps):
@@ -186,13 +186,16 @@ class MonteCarlo:
             # 4. Compute quantities of interest: Magnetization, Total Energy
             # 5. Repeat from step 2 as needed.
         # 6. Analyze the results of the simulation.
-        self.totalEnergyVsTime()
-        self.magVsTime()
+        correlationFxn = self.estimated_autocorrelation(self.avgMagArray)
+        correlationTime = self.integrateCorrelation(correlationFxn)
+        print("The correlation time is: ", correlationTime)
+        #self.totalEnergyVsTime()
+        #self.magVsTime()
 
     def autocorr(self, x):
         result = np.correlate(x, x, 'full')
-        plt.plot(result)
-        plt.show()
+        #plt.plot(result)
+        #plt.show()
         #return result[result.size/2:]
 
     def estimated_autocorrelation(self, x):
@@ -202,9 +205,10 @@ class MonteCarlo:
         r = np.correlate(x, x, mode = 'full')[-n:]
         #assert N.allclose(r, N.array([(x[:n-k]*x[-(n-k):]).sum() for k in range(n)]))
         result = r/(variance*(np.arange(n, 0, -1)))
-        print("THE ZERO IS APPROX AT INDEX ", self.findZeroIndex(result))
-        plt.plot(result)
-        plt.show()
+        #print("THE ZERO IS APPROX AT INDEX ", self.findZeroIndex(result))
+        #plt.plot(result)
+        #plt.show()
+        return result
 
     def findZeroIndex(self, x):
         i = 0
@@ -220,6 +224,14 @@ class MonteCarlo:
             i += 1
             j += 1
 
+    def integrateCorrelation(self, correlationFxn):
+        index = self.findZeroIndex(correlationFxn)
+        correlationFxn = correlationFxn[:index]
+        #plt.plot(correlationFxn)
+        #plt.show()
+        correlationTime = np.trapz(correlationFxn)
+        return correlationTime
+
 
 #################
 ######TEST#######
@@ -231,8 +243,12 @@ class MonteCarlo:
 
 mDT1 = MonteCarlo(32, 1)
 mDT1.metropolisAlgorithm(307200)
+mDT2 = MonteCarlo(32, 1)
+mDT2.metropolisAlgorithm(307200)
+mDT3 = MonteCarlo(32, 1)
+mDT3.metropolisAlgorithm(307200)
 #mDT1.autocorr(mDT1.avgMagArray)
-mDT1.estimated_autocorrelation(mDT1.avgMagArray)
+#mDT1.estimated_autocorrelation(mDT1.avgMagArray)
 #mDT10 = MonteCarlo(32, 10)
 #mDT10.metropolisAlgorithm(307200)
 
