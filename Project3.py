@@ -85,6 +85,9 @@ class MonteCarlo:
         self.avgMagArray = np.array
         self.energyArray = np.array
         self.steps = 0
+        self.ntrials = 0
+        self.correlationTime = 0
+        self.correlationFxn = np.array
 
     # Plot total energy vs time
     def totalEnergyVsTime(self):
@@ -160,7 +163,6 @@ class MonteCarlo:
         print("Running MD Simulation")
         print("size: ", self.size)
         print("steps: ", steps)
-        self.steps = steps
         #fileE = open("energyVsTime.txt", "w")
         self.avgMagArray = np.arange(steps / 300, dtype=np.float)
         #fileM = open("avgMagVsTime.txt", "w")
@@ -188,9 +190,10 @@ class MonteCarlo:
             # 4. Compute quantities of interest: Magnetization, Total Energy
             # 5. Repeat from step 2 as needed.
         # 6. Analyze the results of the simulation.
-        correlationFxn = self.estimated_autocorrelation(self.avgMagArray)
-        correlationTime = self.integrateCorrelation(correlationFxn)
-        print("The correlation time is: ", correlationTime)
+        self.correlationFxn = self.estimated_autocorrelation(self.avgMagArray)
+        self.correlationTime = self.integrateCorrelation(self.correlationFxn)
+        print("The correlation time is: ", self.correlationTime)
+        print("The uncertainty in avg mag is: ", self.bootStrappingMethod())
         #self.totalEnergyVsTime()
         #self.magVsTime()
 
@@ -238,8 +241,33 @@ class MonteCarlo:
         correlationTime = np.trapz(correlationFxn)
         return correlationTime
 
-    def calculateNumberOfIndpTrials(self, correlationTime, numberSteps):
-        return numberSteps / (2 * correlationTime)
+    def calculateNumberOfIndpTrials(self):
+        self.ntrials = self.time / (2 * self.correlationTime)
+
+    def bootStrappingMethod(self):
+        self.calculateNumberOfIndpTrials()
+        p = np.arange(int(self.ntrials), dtype='f')
+        #print("initial p is: ", p)
+        #print("ntrials: ", self.ntrials)
+        #n = int(np.power(self.ntrials, 2))
+        n = 1000
+        avgSampleArray = np.arange(n, dtype='f')
+        #print(n)
+        for i in range(0, n):
+            for j in range(0, int(self.ntrials)):
+                index = np.random.randint(1, self.time)
+                #print("index: ", index)
+                #print("avgmag ", self.avgMagArray[index])
+                #print("j: ", j)
+                p[j] = self.avgMagArray[index]
+            #print(p)
+            avgSample = p.mean()
+            #print("avgSample: ", avgSample)
+            avgSampleArray[i] = avgSample
+        #print(avgSampleArray)
+        avp = np.sqrt(np.var(avgSampleArray))
+        return avp
+
 
 
 #################
