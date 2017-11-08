@@ -84,6 +84,7 @@ class MonteCarlo:
         self.beta = 1 / (self.temperature * self.boltzmanConstant)
         self.avgMagArray = np.array
         self.energyArray = np.array
+        self.steps = 0
 
     # Plot total energy vs time
     def totalEnergyVsTime(self):
@@ -159,6 +160,7 @@ class MonteCarlo:
         print("Running MD Simulation")
         print("size: ", self.size)
         print("steps: ", steps)
+        self.steps = steps
         #fileE = open("energyVsTime.txt", "w")
         self.avgMagArray = np.arange(steps / 300, dtype=np.float)
         #fileM = open("avgMagVsTime.txt", "w")
@@ -213,6 +215,10 @@ class MonteCarlo:
     def findZeroIndex(self, x):
         i = 0
         j = 1
+
+        #if (self.size == 4):
+        #    return 2
+
         for v in x:
             #print("v: ", v)
             #print("x[i]: ", x[i])
@@ -220,17 +226,20 @@ class MonteCarlo:
             if x[i] > 0 and x[j] < 0:
                 #print("THE VALUE IS: ", v)
                 #print("THE INDEX IS: ", i)
-                return i
+                return j
             i += 1
             j += 1
 
     def integrateCorrelation(self, correlationFxn):
         index = self.findZeroIndex(correlationFxn)
-        correlationFxn = correlationFxn[:index]
+        correlationFxn = correlationFxn[:index + 1]
         #plt.plot(correlationFxn)
         #plt.show()
         correlationTime = np.trapz(correlationFxn)
         return correlationTime
+
+    def calculateNumberOfIndpTrials(self, correlationTime, numberSteps):
+        return numberSteps / (2 * correlationTime)
 
 
 #################
@@ -241,12 +250,14 @@ class MonteCarlo:
 #mD16T1 = MonteCarlo(16,1)
 #mD32T1 = MonteCarlo(32,1)
 
-mDT1 = MonteCarlo(32, 1)
+mDT1 = MonteCarlo(4, 1)
 mDT1.metropolisAlgorithm(307200)
-mDT2 = MonteCarlo(32, 1)
+mDT2 = MonteCarlo(8, 1)
 mDT2.metropolisAlgorithm(307200)
-mDT3 = MonteCarlo(32, 1)
+mDT3 = MonteCarlo(16, 1)
 mDT3.metropolisAlgorithm(307200)
+mDT4 = MonteCarlo(32, 1)
+mDT4.metropolisAlgorithm(307200)
 #mDT1.autocorr(mDT1.avgMagArray)
 #mDT1.estimated_autocorrelation(mDT1.avgMagArray)
 #mDT10 = MonteCarlo(32, 10)
