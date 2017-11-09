@@ -158,11 +158,16 @@ class MonteCarlo:
         sum = abs((np.sum(self.twoDArray.alloy, None, float) + 0.0) / np.power(self.size, 2))
         return sum
 
+
+    # Calculates the average magnetization at equilibrium
+    def equilibriumAvgMagnetization(self):
+        print("blap")
+
     # Metropolis Alogrithm
     def metropolisAlgorithm(self, steps):
-        print("Running MD Simulation")
-        print("size: ", self.size)
-        print("steps: ", steps)
+        #print("Running MD Simulation")
+        #print("size: ", self.size)
+        #print("steps: ", steps)
         #fileE = open("energyVsTime.txt", "w")
         self.avgMagArray = np.arange(steps / 300, dtype=np.float)
         #fileM = open("avgMagVsTime.txt", "w")
@@ -268,6 +273,35 @@ class MonteCarlo:
         avp = np.sqrt(np.var(avgSampleArray))
         return avp
 
+    def calculateMagVsTemp(self):
+        # Create an array of temperatures
+        # Choose a step size for the temperature, try dT = 0.1
+        numTemps = int(1 / 0.1)
+        temps = np.arange(numTemps, dtype = 'float')
+        temps.fill(0)
+        temps[0] = 1
+        dT = 0.1
+        for i in range(1, numTemps):
+            temps[i] = temps[i - 1] + dT
+        print(temps)
+
+        # Create an array of error bars for each temperature
+        # Create an array for the avg mag at each temperature
+        avgMagArray = np.arange(numTemps, dtype = 'float')
+        # Create an array for the uncertainty
+        uncertaintyArrray = np.arange(numTemps, dtype = 'float')
+        for i in range(0, numTemps):
+            temp = MonteCarlo(32, temps[i])
+            temp.metropolisAlgorithm(307200)
+            v = temp.calculateAvgMagnetization()
+            avgMagArray[i] = v
+            uncertaintyArrray[i] = temp.bootStrappingMethod()
+        plt.errorbar(temps, avgMagArray, uncertaintyArrray)
+        plt.show()
+
+
+
+
 
 
 #################
@@ -278,14 +312,24 @@ class MonteCarlo:
 #mD16T1 = MonteCarlo(16,1)
 #mD32T1 = MonteCarlo(32,1)
 
-mDT1 = MonteCarlo(4, 1)
-mDT1.metropolisAlgorithm(307200)
-mDT2 = MonteCarlo(8, 1)
-mDT2.metropolisAlgorithm(307200)
-mDT3 = MonteCarlo(16, 1)
-mDT3.metropolisAlgorithm(307200)
+#mDT1 = MonteCarlo(4, 1)
+#mDT1.metropolisAlgorithm(307200)
+#mDT2 = MonteCarlo(8, 1)
+#mDT2.metropolisAlgorithm(307200)
+#mDT3 = MonteCarlo(16, 1)
+#mDT3.metropolisAlgorithm(307200)
+
+
 mDT4 = MonteCarlo(32, 1)
-mDT4.metropolisAlgorithm(307200)
+#print("T = 1:")
+mDT4.metropolisAlgorithm(3000000)
+#mDT4.calculateMagVsTemp()
+#mDT5 = MonteCarlo(32, 2)
+#print("T = 2:")
+#mDT5.metropolisAlgorithm(307200)
+#mDT6 = MonteCarlo(32, 3)
+#print("T = 3:")
+#mDT6.metropolisAlgorithm(307200)
 #mDT1.autocorr(mDT1.avgMagArray)
 #mDT1.estimated_autocorrelation(mDT1.avgMagArray)
 #mDT10 = MonteCarlo(32, 10)
