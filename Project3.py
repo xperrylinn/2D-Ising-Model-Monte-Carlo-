@@ -163,37 +163,62 @@ class MonteCarlo:
         print("Running MD Simulation")
         print("size: ", self.size)
         print("steps: ", steps)
-        #fileE = open("energyVsTime.txt", "w")
-        self.avgMagArray = np.arange(steps / 300, dtype=np.float)
-        #fileM = open("avgMagVsTime.txt", "w")
-        self.energyArray = np.arange(steps / 300)
-        #self.twoDArray.printArray()
-        # 1. Establish an initial configuration of moments.
-        self.calculateInitialTotalEnergy()
+
+        # Setup data structures
+        numSpin = self.size * self.size # By convention one "time" step is L^2 spin flip attempts
+        initialNumDataPoints = int(steps / numSpin)
+        print("initialNumDataPoints: ", initialNumDataPoints)
+        self.avgMagArray = np.arange(initialNumDataPoints, dtype=np.float)
+        self.energyArray = np.arange(initialNumDataPoints)
+
+        # 0. Take the system to equilibrium.
+
+        self.calculateInitialTotalEnergy() # Calculate the total energy before any spin flip attempts
         for i in range(0, steps):
-            # 2. Select a random moment. Compute change in change
-            #    in energy associated with flipping the spin.
-            site = self.generateRandomSite()
-            #self.twoDArray.changeState(site)
-            #newTotalEnergyEnergy = self.calculateTotalEnergy()
-            newTotalEnergyEnergy = self.calculateTotalEnergyAfterSpinFlip(site)
+            site = self.generateRandomSite() # Select a random site
+            totalEnergyAfterSpinFlip = self.calculateTotalEnergyAfterSpinFlip(site) # Calculate the energy after a random spin is flipped
             # 3. Accept or reject the spin flip.
-            flip = self.acceptFlipOrNot(newTotalEnergyEnergy)
+            flip = self.acceptFlipOrNot(totalEnergyAfterSpinFlip)
             if (flip):
-                self.totalEnergy = newTotalEnergyEnergy
+                self.totalEnergy = totalEnergyAfterSpinFlip
             else:
                 self.twoDArray.changeState(site)
-            if (i % 300 == 0):
+            # Store energy and magnetization while system reaches equilibrium
+            if (i % numSpin == 0):
+                if (i / numSpin == initialNumDataPoints):
+                    print(i)
+                    print("Size of avgMagArray w/ non-eq. data: ", self.avgMagArray.size)
+                    print("Size of energyArray w/ non-eq. data: ", self.energyArray.size)
+                    print("self.time: ", self.time)
+                    break
                 self.avgMagArray[self.time] = self.calculateAvgMagnetization()
                 self.energyArray[self.time] = self.totalEnergy
                 self.time += 1
-            # 4. Compute quantities of interest: Magnetization, Total Energy
-            # 5. Repeat from step 2 as needed.
-        # 6. Analyze the results of the simulation.
+
+        # Plot before removing non-equilibrium data
+        #self.totalEnergyVsTime()
+        #self.magVsTime()
+
+
+        # Determine the correlation time.
         self.correlationFxn = self.estimated_autocorrelation(self.avgMagArray)
         self.correlationTime = self.integrateCorrelation(self.correlationFxn)
-        print("The correlation time is: ", self.correlationTime)
-        print("The uncertainty in avg mag is: ", self.bootStrappingMethod())
+        print("Size of avgMagArray w/ non-eq. data: ", self.avgMagArray.size)
+        print("Size of energyArray w/ non-eq. data: ", self.energyArray.size)
+        # Remove non-equilibrium data using correlation time. "Collect Data" now that the system is at equilibrium
+        scaledCorrelationTime = int(5 * self.correlationTime)
+        print("Correlation time; ", self.correlationTime)
+        print("Correlation time scaled; ", scaledCorrelationTime)
+        self.avgMagArray = self.avgMagArray[scaledCorrelationTime:]
+        self.energyArray = self.energyArray[scaledCorrelationTime:]
+        print("Size of avgMagArray w/ only eq. data: ", self.avgMagArray.size)
+        print("Size of energyArray w/ only eq. data: ", self.energyArray.size)
+
+        # Determine the uncertainty
+        uncertInMag = self.bootStrappingMethod()
+        print("The uncertainty in avg mag is: ", uncertInMag)
+
+        # Plot after removing non-equilibrium data
         #self.totalEnergyVsTime()
         #self.magVsTime()
 
@@ -242,11 +267,12 @@ class MonteCarlo:
         return correlationTime
 
     def calculateNumberOfIndpTrials(self):
-        self.ntrials = self.time / (2 * self.correlationTime)
+        self.ntrials = int(self.avgMagArray.size / (2 * self.correlationTime))
 
     def bootStrappingMethod(self):
-        self.calculateNumberOfIndpTrials()
-        p = np.arange(int(self.ntrials), dtype='f')
+        self.calculateNumberOfIndpTrials() # Calculate the number in indep. trials
+        print("ntrials: ", self.ntrials)
+        p = np.arange(self.ntrials, dtype='f')
         #print("initial p is: ", p)
         #print("ntrials: ", self.ntrials)
         #n = int(np.power(self.ntrials, 2))
@@ -255,7 +281,7 @@ class MonteCarlo:
         #print(n)
         for i in range(0, n):
             for j in range(0, int(self.ntrials)):
-                index = np.random.randint(1, self.time)
+                index = np.random.randint(1, self.ntrials)
                 #print("index: ", index)
                 #print("avgmag ", self.avgMagArray[index])
                 #print("j: ", j)
@@ -278,14 +304,14 @@ class MonteCarlo:
 #mD16T1 = MonteCarlo(16,1)
 #mD32T1 = MonteCarlo(32,1)
 
-mDT1 = MonteCarlo(4, 1)
-mDT1.metropolisAlgorithm(307200)
-mDT2 = MonteCarlo(8, 1)
-mDT2.metropolisAlgorithm(307200)
-mDT3 = MonteCarlo(16, 1)
-mDT3.metropolisAlgorithm(307200)
+#mDT1 = MonteCarlo(4, 1)
+#mDT1.metropolisAlgorithm(307200)
+#mDT2 = MonteCarlo(8, 1)
+#mDT2.metropolisAlgorithm(307200)
+#mDT3 = MonteCarlo(16, 1)
+#mDT3.metropolisAlgorithm(307200)
 mDT4 = MonteCarlo(32, 1)
-mDT4.metropolisAlgorithm(307200)
+mDT4.metropolisAlgorithm(3000000)
 #mDT1.autocorr(mDT1.avgMagArray)
 #mDT1.estimated_autocorrelation(mDT1.avgMagArray)
 #mDT10 = MonteCarlo(32, 10)
