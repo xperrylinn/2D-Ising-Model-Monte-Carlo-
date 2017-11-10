@@ -167,7 +167,7 @@ class MonteCarlo:
         # Setup data structures
         numSpin = self.size * self.size # By convention one "time" step is L^2 spin flip attempts
         initialNumDataPoints = int(steps / numSpin)
-        print("initialNumDataPoints: ", initialNumDataPoints)
+        #print("initialNumDataPoints: ", initialNumDataPoints)
         self.avgMagArray = np.arange(initialNumDataPoints, dtype=np.float)
         self.energyArray = np.arange(initialNumDataPoints)
 
@@ -186,10 +186,10 @@ class MonteCarlo:
             # Store energy and magnetization while system reaches equilibrium
             if (i % numSpin == 0):
                 if (i / numSpin == initialNumDataPoints):
-                    print(i)
-                    print("Size of avgMagArray w/ non-eq. data: ", self.avgMagArray.size)
-                    print("Size of energyArray w/ non-eq. data: ", self.energyArray.size)
-                    print("self.time: ", self.time)
+                    #print(i)
+                    #print("Size of avgMagArray w/ non-eq. data: ", self.avgMagArray.size)
+                    #print("Size of energyArray w/ non-eq. data: ", self.energyArray.size)
+                    #print("self.time: ", self.time)
                     break
                 self.avgMagArray[self.time] = self.calculateAvgMagnetization()
                 self.energyArray[self.time] = self.totalEnergy
@@ -203,30 +203,24 @@ class MonteCarlo:
         # Determine the correlation time.
         self.correlationFxn = self.estimated_autocorrelation(self.avgMagArray)
         self.correlationTime = self.integrateCorrelation(self.correlationFxn)
-        print("Size of avgMagArray w/ non-eq. data: ", self.avgMagArray.size)
-        print("Size of energyArray w/ non-eq. data: ", self.energyArray.size)
+        #print("Size of avgMagArray w/ non-eq. data: ", self.avgMagArray.size)
+        #print("Size of energyArray w/ non-eq. data: ", self.energyArray.size)
         # Remove non-equilibrium data using correlation time. "Collect Data" now that the system is at equilibrium
-        scaledCorrelationTime = int(5 * self.correlationTime)
-        print("Correlation time; ", self.correlationTime)
-        print("Correlation time scaled; ", scaledCorrelationTime)
+        scaledCorrelationTime = int(2 * self.correlationTime)
+        #print("Correlation time; ", self.correlationTime)
+        #print("Correlation time scaled; ", scaledCorrelationTime)
         self.avgMagArray = self.avgMagArray[scaledCorrelationTime:]
         self.energyArray = self.energyArray[scaledCorrelationTime:]
-        print("Size of avgMagArray w/ only eq. data: ", self.avgMagArray.size)
-        print("Size of energyArray w/ only eq. data: ", self.energyArray.size)
+        #print("Size of avgMagArray w/ only eq. data: ", self.avgMagArray.size)
+        #print("Size of energyArray w/ only eq. data: ", self.energyArray.size)
 
         # Determine the uncertainty
         uncertInMag = self.bootStrappingMethod()
-        print("The uncertainty in avg mag is: ", uncertInMag)
+        #print("The uncertainty in avg mag is: ", uncertInMag)
 
         # Plot after removing non-equilibrium data
         #self.totalEnergyVsTime()
         #self.magVsTime()
-
-    def autocorr(self, x):
-        result = np.correlate(x, x, 'full')
-        #plt.plot(result)
-        #plt.show()
-        #return result[result.size/2:]
 
     def estimated_autocorrelation(self, x):
         n = len(x)
@@ -267,11 +261,12 @@ class MonteCarlo:
         return correlationTime
 
     def calculateNumberOfIndpTrials(self):
+        print(self.avgMagArray.size)
         self.ntrials = int(self.avgMagArray.size / (2 * self.correlationTime))
 
     def bootStrappingMethod(self):
         self.calculateNumberOfIndpTrials() # Calculate the number in indep. trials
-        print("ntrials: ", self.ntrials)
+        #print("ntrials: ", self.ntrials)
         p = np.arange(self.ntrials, dtype='f')
         #print("initial p is: ", p)
         #print("ntrials: ", self.ntrials)
@@ -281,7 +276,7 @@ class MonteCarlo:
         #print(n)
         for i in range(0, n):
             for j in range(0, int(self.ntrials)):
-                index = np.random.randint(1, self.ntrials)
+                index = np.random.randint(1, self.avgMagArray.size)
                 #print("index: ", index)
                 #print("avgmag ", self.avgMagArray[index])
                 #print("j: ", j)
@@ -293,6 +288,41 @@ class MonteCarlo:
         #print(avgSampleArray)
         avp = np.sqrt(np.var(avgSampleArray))
         return avp
+
+def calculateMagVsTemp():
+    # Create an array of temperatures
+    # Choose a step size for the temperature, try dT = 0.1
+    numTemps = int(3 / 0.1)
+    print("numTemps: ", numTemps)
+    temps = np.zeros(numTemps)
+    print("temps: ", temps)
+    #temps.fill(0)
+    temps[0] = 1
+    dT = 0.1
+    for i in range(1, numTemps):
+        temps[i] = temps[i - 1] + dT
+    print(temps)
+
+    # Create an array of error bars for each temperature
+    # Create an array for the avg mag at each temperature
+    avgMagArray = np.zeros(numTemps)
+    #avgMagArray.fill(0)
+    # Create an array for the uncertainty
+    uncertaintyArrray = np.zeros(numTemps)
+    #uncertaintyArrray.fill(0)
+    for i in range(0, numTemps):
+        print("@ temp: ", temps[i])
+        temp = MonteCarlo(16, temps[i])
+        temp.metropolisAlgorithm(30000000)
+        v = temp.calculateAvgMagnetization()
+        avgMagArray[i] = v
+        uncertaintyArrray[i] = temp.bootStrappingMethod()
+    print("temps: ", temps)
+    print("avgMagArray: ", avgMagArray)
+    print("uncertaintyArrary: ", uncertaintyArrray)
+    plt.errorbar(temps, avgMagArray, uncertaintyArrray)
+    plt.show()
+
 
 
 
@@ -310,8 +340,9 @@ class MonteCarlo:
 #mDT2.metropolisAlgorithm(307200)
 #mDT3 = MonteCarlo(16, 1)
 #mDT3.metropolisAlgorithm(307200)
-mDT4 = MonteCarlo(32, 1)
-mDT4.metropolisAlgorithm(3000000)
+#mDT4 = MonteCarlo(32, 1)
+#mDT4.metropolisAlgorithm(3000000)
+calculateMagVsTemp()
 #mDT1.autocorr(mDT1.avgMagArray)
 #mDT1.estimated_autocorrelation(mDT1.avgMagArray)
 #mDT10 = MonteCarlo(32, 10)
