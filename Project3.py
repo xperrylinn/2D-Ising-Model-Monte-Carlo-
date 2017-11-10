@@ -215,7 +215,7 @@ class MonteCarlo:
         #print("Size of energyArray w/ only eq. data: ", self.energyArray.size)
 
         # Determine the uncertainty
-        uncertInMag = self.bootStrappingMethod()
+        #uncertInMag = self.bootStrappingMethod()
         #print("The uncertainty in avg mag is: ", uncertInMag)
 
         # Plot after removing non-equilibrium data
@@ -261,10 +261,27 @@ class MonteCarlo:
         return correlationTime
 
     def calculateNumberOfIndpTrials(self):
-        print(self.avgMagArray.size)
+        #print(self.avgMagArray.size)
         self.ntrials = int(self.avgMagArray.size / (2 * self.correlationTime))
 
-    def bootStrappingMethod(self):
+    # Calculates the the variance 
+    def calculateHeatCapcaityPerSite(self):
+        print("Calculating head capacity")
+        # Cv = (1 / (Kb * T^2 * L^2)) * (<E^2> - <E>^2)
+        var = np.var(self.energyArray)
+        Cv = (1 / (np.power(self.size, 2) * np.power(self.temperature, 2))) * var
+
+
+    # Caclulate the magnetic susceptibility per site 
+    def calculateMagneticSusceptibilityPerSite(self):
+        print("Calculating Magnetic Susceptibility")
+        # x = beta * (1 / L^2) (<m^2> - <m>^2), beta = 1 / T
+        var = np.var(self.avgMagArray)
+        x = self.beta * (1 / np.power(self.size, 2)) * var
+
+
+
+    def bootStrappingMethod(self, data):
         self.calculateNumberOfIndpTrials() # Calculate the number in indep. trials
         #print("ntrials: ", self.ntrials)
         p = np.arange(self.ntrials, dtype='f')
@@ -276,11 +293,12 @@ class MonteCarlo:
         #print(n)
         for i in range(0, n):
             for j in range(0, int(self.ntrials)):
-                index = np.random.randint(1, self.avgMagArray.size)
+                index = np.random.randint(1, data.size)
                 #print("index: ", index)
                 #print("avgmag ", self.avgMagArray[index])
                 #print("j: ", j)
-                p[j] = self.avgMagArray[index]
+                p[j] = data[index]
+                #p[j] = self.avgMagArray[index]
             #print(p)
             avgSample = p.mean()
             #print("avgSample: ", avgSample)
@@ -306,21 +324,43 @@ def calculateMagVsTemp():
     # Create an array of error bars for each temperature
     # Create an array for the avg mag at each temperature
     avgMagArray = np.zeros(numTemps)
+    magneticSusceptibilityArray = np.zeros(numTemps)
+    heatCapacityArray = np.zeros(numTemps)
     #avgMagArray.fill(0)
     # Create an array for the uncertainty
-    uncertaintyArrray = np.zeros(numTemps)
+    uncertMagArrray = np.zeros(numTemps)
+    uncertMagSusArray = np.zeros(numTemps)
+    uncertHeatCapArray = np.zeros(numTemps)
     #uncertaintyArrray.fill(0)
-    for i in range(0, numTemps):
-        print("@ temp: ", temps[i])
-        temp = MonteCarlo(16, temps[i])
-        temp.metropolisAlgorithm(30000000)
-        v = temp.calculateAvgMagnetization()
-        avgMagArray[i] = v
-        uncertaintyArrray[i] = temp.bootStrappingMethod()
-    print("temps: ", temps)
-    print("avgMagArray: ", avgMagArray)
-    print("uncertaintyArrary: ", uncertaintyArrray)
-    plt.errorbar(temps, avgMagArray, uncertaintyArrray)
+    sizes = [4, 8, 16, 32]
+    for L in sizes:
+        for i in range(0, numTemps):
+            print("@ temp: ", temps[i])
+            print("@ L = : ", L)
+            temp = MonteCarlo(L, temps[i])
+            temp.metropolisAlgorithm(3000000)
+            avgMagArray[i] = temp.calculateAvgMagnetization()
+            magneticSusceptibilityArray[i] = temp.calculateMagneticSusceptibilityPerSite()
+            heatCapacityArray[i] = temp.calculateHeatCapcaityPerSite()
+            uncertMagArrray[i] = temp.bootStrappingMethod(avgMagArray)
+            uncertMagSusArray[i] = temp.bootStrappingMethod(magneticSusceptibilityArray)
+            uncertHeatCapArray[i] = temp.bootStrappingMethod(heatCapacityArray)
+            plt.errorbar(temps, avgMagArray, uncertMagArrray)
+            plt.show()
+            plt.errorbar(temps, magneticSusceptibilityArray, uncertMagSusArray)
+            plt.show()
+            plt.errorbar(temps, heatCapacityArray, uncertHeatCapArray)
+            plt.show()  
+            plt.show()
+        print("temps: ", temps)
+        print("avgMagArray: ", avgMagArray)
+        print("uncertaintyArrary: ", uncertMagArrray)
+    plt.errorbar(temps, avgMagArray, uncertMagArrray)
+    plt.show()
+    plt.errorbar(temps, magneticSusceptibilityArray, uncertMagSusArray)
+    plt.show()
+    plt.errorbar(temps, heatCapacityArray, uncertHeatCapArray)
+    plt.show()  
     plt.show()
 
 
