@@ -319,6 +319,9 @@ def simulation():
         for i in range(0, numTemps):
             print("@ temp: ", temps[i])
             print("@ L = : ", L)
+            # Create a new Monte Carlo
+            temp = MonteCarlo(L, temps[i])
+            temp.metropolisAlgorithm(4000000)
             # Experimental data
             avgMagArray[i] = temp.calculateAvgMagnetization()
             magneticSusceptibilityArray[i] = temp.calculateMagneticSusceptibilityPerSite()
