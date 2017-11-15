@@ -313,6 +313,8 @@ def simulation():
     dT = 0.1
     for i in range(1, numTemps):
         temps[i] = temps[i - 1] + dT
+    # Create arrays for plotting data
+
     # Create array's for the experimental data
     avgMagArray = np.zeros(numTemps)
     magneticSusceptibilityArray = np.zeros(numTemps)
@@ -322,7 +324,7 @@ def simulation():
     uncertMagSusArray = np.zeros(numTemps)
     uncertHeatCapArray = np.zeros(numTemps)
     # For a series of system sizes and temperatures run the simulation
-    sizes = [4, 8, 16, 32]
+    sizes = [4]
     for L in sizes:
         # Create a new Monte Carlo
         temp = MonteCarlo(L, 1.0)
@@ -340,15 +342,14 @@ def simulation():
         # Calculate the exact values
         temp.calculateExactValues()
         # Plot data to files as pdf's
-
         plt.title("Average Magnetization Per Site vs. Temperature")
         plt.xlabel("T")
         plt.ylabel("<|m|>")
         fileName = str(L) + "x" + str(L) + "AvgMag.pdf"
-        plt.errorbar(temps, avgMagArray, uncertMagArrray, label='experimental')
-        plt.plot(temp.exactTemps, temp.exactMagArray, label='exact')
+        plt.errorbar(temps, avgMagArray, uncertMagArrray, label='Experimental')
+        plt.plot(temp.exactTemps, temp.exactMagArray, label='Exact')
         plt.legend()
-        plt.show()
+        plt.grid('on')
         plt.savefig(fileName)
         plt.close()
         plt.errorbar(temps, magneticSusceptibilityArray, uncertMagSusArray)
@@ -356,14 +357,17 @@ def simulation():
         plt.xlabel("T")
         plt.ylabel("x")
         fileName = str(L) + "x" + str(L) + "MagSuscept.pdf"
+        plt.grid('on')
         plt.savefig(fileName)
         plt.close()
-        plt.errorbar(temps, heatCapacityArray, uncertHeatCapArray)
-        plt.plot(temp.exactTemps, temp.exactHeatCapacity)
+        plt.errorbar(temps, heatCapacityArray, uncertHeatCapArray, label='Experimental')
+        plt.plot(temp.exactTemps, temp.exactHeatCapacity, label='Exact')
         plt.title("Heat Capacity Per Site vs. Temperature")
         plt.xlabel("T")
         plt.ylabel("Cv")
         fileName = str(L) + "x" + str(L) + "HeatCapacity.pdf"
+        plt.legend()
+        plt.grid('on')
         plt.savefig(fileName)
         plt.close()
 
