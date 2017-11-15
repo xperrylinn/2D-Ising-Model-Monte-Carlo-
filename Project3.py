@@ -6,6 +6,8 @@
 # Import statements
 import numpy as np # Library for providing array and functions to calculate values
 import matplotlib.pyplot as plt # Library for plotting
+import matplotlib.patches as mpatches # Library for plot legend
+
 
 # TwoDArray is a class that provides a 2D lattice for the Monte Carlo simulation,
 # with features for changing the state at a given site, and indexing functions for
@@ -320,13 +322,13 @@ def simulation():
     uncertMagSusArray = np.zeros(numTemps)
     uncertHeatCapArray = np.zeros(numTemps)
     # For a series of system sizes and temperatures run the simulation
-    sizes = [4, 8]
+    sizes = [4, 8, 16, 32]
     for L in sizes:
         # Create a new Monte Carlo
         temp = MonteCarlo(L, 1.0)
         for i in range(0, numTemps):
             temp.temperature = temps[i]
-            temp.metropolisAlgorithm(500000)
+            temp.metropolisAlgorithm(5000)
             # Calcultate experimental data for given temperature
             avgMagArray[i] = temp.calculateAvgMagnetization()
             magneticSusceptibilityArray[i] = temp.calculateMagneticSusceptibilityPerSite()
@@ -338,12 +340,15 @@ def simulation():
         # Calculate the exact values
         temp.calculateExactValues()
         # Plot data to files as pdf's
-        plt.errorbar(temps, avgMagArray, uncertMagArrray)
-        plt.plot(temp.exactTemps, temp.exactMagArray)
+
         plt.title("Average Magnetization Per Site vs. Temperature")
         plt.xlabel("T")
         plt.ylabel("<|m|>")
         fileName = str(L) + "x" + str(L) + "AvgMag.pdf"
+        plt.errorbar(temps, avgMagArray, uncertMagArrray, label='experimental')
+        plt.plot(temp.exactTemps, temp.exactMagArray, label='exact')
+        plt.legend()
+        plt.show()
         plt.savefig(fileName)
         plt.close()
         plt.errorbar(temps, magneticSusceptibilityArray, uncertMagSusArray)
