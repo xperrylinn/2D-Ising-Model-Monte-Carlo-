@@ -4,10 +4,12 @@
 # Metropolis algorithm to compute the properties of a 2D Ising models.
 
 # Import statements
-import numpy as np
-import matplotlib.pyplot as plt
+import numpy as np # Library for providing array and functions to calculate values
+import matplotlib.pyplot as plt # Library for plotting
 
-# Class for creating a 2D array
+# TwoDArray is a class that provides a 2D lattice for the Monte Carlo simulation,
+# with features for changing the state at a given site, and indexing functions for
+# implementing periodic boundary conditions.
 class TwoDArray:
 
     # Instantiate a 2D array
@@ -19,7 +21,7 @@ class TwoDArray:
     # Populate alloy randomly with 1's an -1's
     def populateTwoDArray(self):
         # Iterate through all the 2D array and put a -1 or 1 based on random number
-        # Generate a random number between 1 and 10, if < 6 populate with -1
+        # Generate a random number between 1 and 10, if <= 5 populate with -1
         for i in range(0, self.size):
             for j in range(0, self.size):
                 spin = 1
@@ -29,12 +31,14 @@ class TwoDArray:
                 self.alloy[i][j] = spin
 
     # Prints the 2D array
+    # used primarily for testing and debugging
     def printArray(self):
         print("Printing the 2D array")
         print(self.alloy)
 
 
     # Retrieve the state at index i
+    # implements periodic boundary conditions
     def stateAtIndexI(self, i, j):
         if (i == -1):
             return self.alloy[self.size - 1][j]
@@ -44,6 +48,7 @@ class TwoDArray:
             return self.alloy[i][j]
 
     # Retrieve the state at index j
+    # implements periodic boundary conditions
     def stateAtIndexJ(self, i, j):
         if (j == -1):
             return self.alloy[i][self.size - 1]
@@ -53,6 +58,7 @@ class TwoDArray:
             return self.alloy[i][j]
 
     # Change state at index i, j
+    # changes state from 1 to -1 and vice-versa
     def changeState(self, site):
         i = site[0]
         j = site[1]
@@ -62,8 +68,10 @@ class TwoDArray:
         else:
             self.alloy[i][j] = 1
 
-# Class for running the MonteCaro Simulation, one class instance
-# per temp and system size
+# Class for running the MonteCaro Simulation, with features for
+# calculating experimental and exact values. A Monte Carlo time
+# step is defined to be L^2 spin flip attempts. For this simulation
+# J = 1, and H = 0.
 class MonteCarlo:
 
     # Instantiate a  Monte Carlo Simulation
@@ -73,29 +81,34 @@ class MonteCarlo:
         self.size = s
         self.time = 0
         self.temperature = temp
-        self.boltzmanConstant = 1
-        self.beta = 1.0 / (self.temperature * self.boltzmanConstant)
         self.avgMagArray = np.array
         self.magneticMomentArray = np.array
         self.energyArray = np.array
+        self.heatCapacityPerSite = np.array
+        self.exactMagArray = np.array
+        self.exactHeatCapacity = np.array
+        self.exactTemps = np.array
         self.steps = 0
         self.ntrials = 0
         self.correlationTime = 0
         self.correlationFxn = np.array
+        self.calculateInitialTotalEnergy() # Calculates the total energy before any spin flip attempts
 
     # Plot total energy vs time
+    # used primarily for testing and debugging
     def totalEnergyVsTime(self):
         plt.plot(self.energyArray)
         plt.title("ENERGY VS TIME")
         plt.show()
 
     # Plot avg mag vs time
+    # used primarily for testing and debugging
     def magVsTime(self):
         plt.plot(self.avgMagArray)
         plt.title("MAG VS TIME")
         plt.show()
 
-    # Calculate the initial total energy, i.e. before any spins have been flipped
+    # Calculate the initial total energy, before any spins have been flipped
     def calculateInitialTotalEnergy(self):
         for i in range(0, self.size):
             for j in range(0, self.size):
@@ -108,15 +121,15 @@ class MonteCarlo:
         j = np.random.randint(0, self.size)
         return (i, j)
 
-    # Calculate change in energy:
-    # calculates the energy between two iterations
+    # Calculates the energy contribution at a given site, by
+    # summing up the iteractions of a site and it's four neighbors
     def energyContributionAtSite(self, site):
         i = site[0]
         j = site[1]
         energyContribution = (-1) * self.twoDArray.alloy[i][j] * (self.twoDArray.stateAtIndexI(i + 1, j) + self.twoDArray.stateAtIndexJ(i, j + 1) + self.twoDArray.stateAtIndexI(i - 1, j) + self.twoDArray.stateAtIndexJ(i, j - 1))
         return energyContribution
 
-    # Determines the energy after a Monte Carlo time step (a spin flip attemp)
+    # Calculates and returns the energy after a Monte Carlo time step
     def calculateTotalEnergyAfterSpinFlip(self, site):
         initialEnergy = self.totalEnergy
         energyContributionAtSiteBeforeFlip = self.energyContributionAtSite(site)
@@ -125,46 +138,43 @@ class MonteCarlo:
         finalEnergy = initialEnergy - energyContributionAtSiteBeforeFlip + energyContributionAtSiteAfterFlip
         return finalEnergy
 
-    # Accept the spin flip or not
+    # Decides whether to accept a spin flip or not, by calculating
+    # the boltzman factor and comparing it to a random number between 0 and 1.
+    # Returns true for flipping the spin and false to not flip the spin
     def acceptFlipOrNot(self, newEnergy):
         energyChange = newEnergy - self.totalEnergy
         if (energyChange <= 0):
             return True
         else:
-            boltzman = np.exp(-1 * self.beta * energyChange)
+            boltzman = np.exp(-1 * (1.0 / self.temperature) * energyChange)
             eta = np.random.random_sample()
             if (eta < boltzman): # If eta < boltzman factor, ACCEPT
                 return True
             else: # If eta >= boltzman factor, REJECT
                 return False
 
-    # Calculates the average magnetization per site
+    # Calculates and returns the average magnetization per site using
     def calculateAvgMagnetization(self):
-        avg = abs((np.sum(self.twoDArray.alloy, None, float) + 0.0) / np.power(self.size, 2))
+        #avg = abs((np.sum(self.twoDArray.alloy, None, float) + 0.0) / np.power(self.size, 2))
+        avg = abs(np.average(self.avgMagArray))
         return avg
 
-    # Calculates the magnetic moment
+    # Calculates the returns the magnetic moment
     def calculateMagneticMoment(self):
         return np.sum(self.twoDArray.alloy, None, float)
 
-    # Metropolis Alogrithm
+    # Metropolis Alogrithm for the 2D Ising Model
     def metropolisAlgorithm(self, steps):
-        print("Running MD Simulation")
-        print("size: ", self.size)
-        print("steps: ", steps)
-
-        # Setup data structures
+        # Set or reset the time to zero
+        self.time = 0
+        # Setup data structures for collecting experimental data
         numSpin = self.size * self.size # By convention one "time" step is L^2 spin flip attempts
         initialNumDataPoints = int(steps / numSpin)
-        self.avgMagArray = np.arange(initialNumDataPoints, dtype=np.float)
-        self.magneticMomentArray = np.arange(initialNumDataPoints)
-        self.energyArray = np.arange(initialNumDataPoints)
-        #self.avgMagArray = np.arange(250000, dtype=np.float)
-        #self.magneticMomentArray = np.arange(250000)
-        #self.energyArray = np.arange(250000)
-
-        # Take the system to equilibrium and record data
-        self.calculateInitialTotalEnergy() # Calculate the total energy before any spin flip attempts
+        self.avgMagArray = np.zeros(initialNumDataPoints, dtype=np.float)
+        self.magneticMomentArray = np.zeros(initialNumDataPoints, dtype=np.float)
+        self.energyArray = np.zeros(initialNumDataPoints, dtype=np.float)
+        self.heatCapacityPerSite = np.zeros(initialNumDataPoints, dtype=np.float)
+        # Take the system to equilibrium and record data every L^2 spin flip attempts
         for i in range(0, steps):
             site = self.generateRandomSite() # Select a random site
             totalEnergyAfterSpinFlip = self.calculateTotalEnergyAfterSpinFlip(site) # Calculate the energy after a random spin is flipped
@@ -175,47 +185,28 @@ class MonteCarlo:
             else:
                 self.twoDArray.changeState(site)
             # Store energy and magnetization while system reaches equilibrium
-            if (i % numSpin == 0):
-            #if (i > 250000):
+            if (i % numSpin == 0): # Record data every L^2 spin flip attempts
                 if (i / numSpin == initialNumDataPoints):
                     break
-                #print(self.calculateAvgMagnetization())
-                self.avgMagArray[self.time] = self.calculateAvgMagnetization()
-                self.magneticMomentArray[self.time] = self.calculateMagneticMoment()
-                #print(self.totalEnergy)
+                #self.avgMagArray[self.time] = self.calculateAvgMagnetization()
+                #self.magneticMomentArray[self.time] = self.calculateMagneticMoment()
+                self.avgMagArray[self.time] = np.absolute((float(self.totalEnergy)) / (self.size * self.size))/2
+                self.magneticMomentArray[self.time] = self.totalEnergy
                 self.energyArray[self.time] = self.totalEnergy
+                self.heatCapacityPerSite[self.time] = self.calculateHeatCapcaityPerSite()
                 self.time += 1
-
-        # Plot before removing non-equilibrium data
-        #self.totalEnergyVsTime()
-        #self.magVsTime()
-
 
         # Determine the correlation time.
         self.correlationFxn = self.estimated_autocorrelation(self.avgMagArray)
         self.correlationTime = self.integrateCorrelation(self.correlationFxn)
-        print("Size of avgMagArray w/ non-eq. data: ", self.avgMagArray.size)
-        print("Size of energyArray w/ non-eq. data: ", self.energyArray.size)
-        # Remove non-equilibrium data using correlation time. "Collect Data" now that the system is at equilibrium
-        #scaledCorrelationTime = int(25000 * self.correlationTime)
-        scaledCorrelationTime = 2500
-        #print("Correlation time; ", self.correlationTime)
-        #print("Correlation time scaled; ", scaledCorrelationTime)
+        # Remove non-equilibrium data using correlation time.
+        scaledCorrelationTime = int(1 * self.correlationTime)
         self.avgMagArray = self.avgMagArray[scaledCorrelationTime:]
         self.energyArray = self.energyArray[scaledCorrelationTime:]
         self.magneticMomentArray = self.magneticMomentArray[scaledCorrelationTime:]
-        print("Size of avgMagArray w/ only eq. data: ", self.avgMagArray.size)
-        print("Size of energyArray w/ only eq. data: ", self.energyArray.size)
+        self.heatCapacityPerSite = self.heatCapacityPerSite[scaledCorrelationTime:]
 
-        # Determine the uncertainty
-        #uncertInMag = self.bootStrappingMethod()
-        #print("The uncertainty in avg mag is: ", uncertInMag)
-
-        # Plot after removing non-equilibrium data
-        #self.totalEnergyVsTime()
-        #self.magVsTime()
-
-    # Calculate the correlation data, outputs an array
+    # Calculate the correlation data, returns a correlation function
     def estimated_autocorrelation(self, x):
         n = len(x)
         variance = x.var()
@@ -224,7 +215,7 @@ class MonteCarlo:
         result = r/(variance*(np.arange(n, 0, -1)))
         return result
 
-    # Approximate the index where the correlation function corsses the x-axis
+    # Approximate and returns the index where the correlation function crosses the x-axis
     def findZeroIndex(self, x):
         i = 0
         j = 1
@@ -234,7 +225,8 @@ class MonteCarlo:
             i += 1
             j += 1
 
-    # Using the trapezoid method integrate the correlation function
+    # Calculates and returns the correlation time using the trapezoid method integrate
+    # the correlation function from 0 to where to first intersects the x-axis
     def integrateCorrelation(self, correlationFxn):
         index = self.findZeroIndex(correlationFxn)
         correlationFxn = correlationFxn[:index + 1]
@@ -246,7 +238,7 @@ class MonteCarlo:
         #print(self.avgMagArray.size)
         self.ntrials = int(self.avgMagArray.size / (2 * self.correlationTime))
 
-    # Bootstrapping method to determine the uncertainty in a given data set
+    # Calculates the and returns the uncertainty using Bootstrapping method
     def bootStrappingMethod(self, data):
         self.calculateNumberOfIndpTrials()
         p = np.arange(self.ntrials, dtype='f')
@@ -267,45 +259,59 @@ class MonteCarlo:
         Cv = (1.0 / (np.power(self.size, 2) * np.power(self.temperature, 2))) * var
         return Cv
 
+    # Caclulates the magnetic susceptibility per site
+    def calculateMagneticSusceptibilityPerSite(self):
+        # x = beta * (1 / L^2) (<m^2> - <m>^2), beta = 1 / T
+        var = np.var(self.magneticMomentArray)
+        #var = np.var(self.avgMagArray)
+        x = (1.0 / self.temperature) * (1.0 / np.power(self.size, 2 )) * var
+        return x
+
     # Calculates the exact solution for the magnetic susceptibility
-    def calculateExactMagneticSusceptibilityPerSite(self):
-        avg_x = np.power((1 - np.power(np.sinh(2 * (1.0 / self.temperature) * 1), -4)), 1/8)
+    def calculateExactAvgMagneticPerSite(self, temp):
+        avg_x = np.power((1 - np.power(np.sinh(2 * (1.0 / temp) * 1), -4)), 1.0/8.0)
         return avg_x
 
-    # Calculate the critical temperature
+    # Calculates the critical temperature
     def calcuateExactCriticalTemperature(self):
         return (2.0 / np.log(1.0 + np.sqrt(2)))
 
     # Calculates the exact heat capacity per spin
-    def calculateExactHeatCapacity(self):
+    def calculateExactHeatCapacity(self, temp):
         Tc = self.calcuateExactCriticalTemperature()
-        print("Tc: ", Tc)
-        val = (2.0 / np.pi) * np.power((2.0 / Tc), 2) * (-1 * np.log(1 - (self.temperature + 0.0) / Tc) + np.log(Tc / 2.0) - (1 + (np.pi + 0.0)/ 4.0))
+        val = (2.0 / np.pi) * np.power((2.0 / Tc), 2) * (-1 * np.log(1 - (temp + 0.0) / Tc) + np.log(Tc / 2.0) - (1 + (np.pi + 0.0)/ 4.0))
         return val
 
-    # Caclulate the magnetic susceptibility per site
-    def calculateMagneticSusceptibilityPerSite(self):
-        # x = beta * (1 / L^2) (<m^2> - <m>^2), beta = 1 / T
-        var = np.var(self.magneticMomentArray)
-        print(var)
-        #var = np.var(self.avgMagArray)
-        x = self.beta * (1.0 / np.power(self.size, 2)) * var
-        return x
+    # Calcuates the exact values for mag. sus., heat cap., avg mag. over a range of temperatures
+    def calculateExactValues(self):
+        # Create an array of temperatures, with very small steps near Tc
+        criticalTemp = self.calcuateExactCriticalTemperature()
+        dT = 0.00001
+        numTemps = int(criticalTemp / dT)
+        self.exactTemps = np.zeros(numTemps)
+        self.exactTemps[0] = 1.0
+        for i in range(1, numTemps):
+            self.exactTemps[i] = self.exactTemps[i - 1] + dT
+        # Create an arary's for the exact data
+        self.exactMagArray = np.zeros(numTemps)
+        self.exactHeatCapacity = np.zeros(numTemps)
+        for i in range(0, numTemps):
+            self.exactMagArray[i] = self.calculateExactAvgMagneticPerSite(self.exactTemps[i])
+            self.exactHeatCapacity[i] = self.calculateExactHeatCapacity(self.exactTemps[i])
 
+# Function for running the simulation over a range of system sizes each over
+# a range of temperatures. Plot's data to file.
 def simulation():
     # Create an array of temperatures
     # Choose a step size for the temperature, dT = 0.1
     numTemps = int(3 / 0.1)
     temps = np.zeros(numTemps)
-    temps[0] = 1
+    temps[0] = 1.0
+    numTemps = len(temps)
     dT = 0.1
     for i in range(1, numTemps):
         temps[i] = temps[i - 1] + dT
-
-    # Create an arary's for the exact data
-    exactMagArray = np.zeros(numTemps)
-    exactHeatCapacity = np.zeros(numTemps)
-    # Create array's for the exp data
+    # Create array's for the experimental data
     avgMagArray = np.zeros(numTemps)
     magneticSusceptibilityArray = np.zeros(numTemps)
     heatCapacityArray = np.zeros(numTemps)
@@ -314,38 +320,26 @@ def simulation():
     uncertMagSusArray = np.zeros(numTemps)
     uncertHeatCapArray = np.zeros(numTemps)
     # For a series of system sizes and temperatures run the simulation
-    sizes = [8]
+    sizes = [4, 8]
     for L in sizes:
+        # Create a new Monte Carlo
+        temp = MonteCarlo(L, 1.0)
         for i in range(0, numTemps):
-            print("@ temp: ", temps[i])
-            print("@ L = : ", L)
-            # Create a new Monte Carlo
-            temp = MonteCarlo(L, temps[i])
-            temp.metropolisAlgorithm(4000000)
-            # Experimental data
+            temp.temperature = temps[i]
+            temp.metropolisAlgorithm(500000)
+            # Calcultate experimental data for given temperature
             avgMagArray[i] = temp.calculateAvgMagnetization()
             magneticSusceptibilityArray[i] = temp.calculateMagneticSusceptibilityPerSite()
             heatCapacityArray[i] = temp.calculateHeatCapcaityPerSite()
-            # Exact data
-            exactMagArray[i] = temp.calculateExactMagneticSusceptibilityPerSite()
-            #print("avg energy: ", exactMagArray[i])
-            exactHeatCapacity[i] = temp.calculateExactHeatCapacity()
-            #print("heat capacity: ", exactHeatCapacity[i])
-            # Uncertainties
+            # Caclulate uncertainties for experimental values
             uncertMagArrray[i] = temp.bootStrappingMethod(temp.avgMagArray)
             uncertMagSusArray[i] = temp.bootStrappingMethod(magneticSusceptibilityArray)
-            uncertHeatCapArray[i] = temp.bootStrappingMethod(temp.energyArray)
-            print("The correlation time is: ", temp.correlationTime)
-            print("The last three avg's were: ", temp.avgMagArray[1000], " ", temp.avgMagArray[1500], " ", temp.avgMagArray[2499], " ")
-            #print("temps: ", temps)
-        print("avgMagArray: ", avgMagArray)
-        print("magneticSusceptibilityArray: ", magneticSusceptibilityArray)
-        print("heatCapacityArray: ", heatCapacityArray)
-        print("uncertaintyArrary: ", uncertMagArrray)
-        print("uncertMagSusArray: ", uncertMagSusArray)
-        print("uncertHeatCapArray: ", uncertHeatCapArray)
+            uncertHeatCapArray[i] = temp.bootStrappingMethod(temp.heatCapacityPerSite)
+        # Calculate the exact values
+        temp.calculateExactValues()
+        # Plot data to files as pdf's
         plt.errorbar(temps, avgMagArray, uncertMagArrray)
-        plt.plot(temps, exactMagArray)
+        plt.plot(temp.exactTemps, temp.exactMagArray)
         plt.title("Average Magnetization Per Site vs. Temperature")
         plt.xlabel("T")
         plt.ylabel("<|m|>")
@@ -360,7 +354,7 @@ def simulation():
         plt.savefig(fileName)
         plt.close()
         plt.errorbar(temps, heatCapacityArray, uncertHeatCapArray)
-        plt.plot(temps, exactHeatCapacity)
+        plt.plot(temp.exactTemps, temp.exactHeatCapacity)
         plt.title("Heat Capacity Per Site vs. Temperature")
         plt.xlabel("T")
         plt.ylabel("Cv")
@@ -369,29 +363,14 @@ def simulation():
         plt.close()
 
 
-
-
-
-
-#################
-######TEST#######
-#################
-#mD4T1 = MonteCarlo(4,1)
-#mD8T1 = MonteCarlo(8,1)
-#mD16T1 = MonteCarlo(16,1)
-#mD32T1 = MonteCarlo(32,1)
-
-#mDT1 = MonteCarlo(4, 1)
-#mDT1.metropolisAlgorithm(307200)
-#mDT2 = MonteCarlo(8, 1)
-#mDT2.metropolisAlgorithm(307200)
-#mDT3 = MonteCarlo(16, 1)
-#mDT3.metropolisAlgorithm(307200)
-#mDT4 = MonteCarlo(32, 1)
-#mDT4.metropolisAlgorithm(3000000)
+# Run the simulation
 simulation()
-#mDT1.autocorr(mDT1.avgMagArray)
-#mDT1.estimated_autocorrelation(mDT1.avgMagArray)
-#mDT10 = MonteCarlo(32, 2.3)
-#mDT10.metropolisAlgorithm(507200)
 
+
+#print("The correlation time is: ", temp.correlationTime)
+#print("avgMagArray: ", avgMagArray)
+#print("magneticSusceptibilityArray: ", magneticSusceptibilityArray)
+#print("heatCapacityArray: ", heatCapacityArray)
+#print("uncertaintyArrary: ", uncertMagArrray)
+#print("uncertMagSusArray: ", uncertMagSusArray)
+#print("uncertHeatCapArray: ", uncertHeatCapArray)
