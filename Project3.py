@@ -232,9 +232,26 @@ class MonteCarlo:
     def calculateNumberOfIndpTrials(self):
         self.ntrials = int(self.avgMagArray.size / (2 * self.correlationTime))
 
-    # Calculates the and returns the uncertainty using Bootstrapping method
+    # Calculates the the variance 
+    def calculateHeatCapcaityPerSite(self):
+        print("Calculating head capacity")
+        # Cv = (1 / (Kb * T^2 * L^2)) * (<E^2> - <E>^2)
+        var = np.var(self.energyArray)
+        Cv = (1 / (np.power(self.size, 2) * np.power(self.temperature, 2))) * var
+
+
+    # Caclulate the magnetic susceptibility per site 
+    def calculateMagneticSusceptibilityPerSite(self):
+        print("Calculating Magnetic Susceptibility")
+        # x = beta * (1 / L^2) (<m^2> - <m>^2), beta = 1 / T
+        var = np.var(self.avgMagArray)
+        x = self.beta * (1 / np.power(self.size, 2)) * var
+
+
+
     def bootStrappingMethod(self, data):
-        self.calculateNumberOfIndpTrials()
+        self.calculateNumberOfIndpTrials() # Calculate the number in indep. trials
+        #print("ntrials: ", self.ntrials)
         p = np.arange(self.ntrials, dtype='f')
         avgSampleArray = np.arange(1000, dtype='f')
         for i in range(0, 1000):
@@ -460,4 +477,3 @@ def simulation():
 
 # RUN THE SIMULATION!
 simulation()
-
