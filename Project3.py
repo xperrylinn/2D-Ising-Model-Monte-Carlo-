@@ -1,13 +1,11 @@
 # Xavier Linn
-# MSE 215, Project 3
+# MSE 215, Project 3, Fall 2017
 # A Monte Carlo Problem
 # Metropolis algorithm to compute the properties of a 2D Ising models.
 
 # Import statements
 import numpy as np # Library for providing array and functions to calculate values
 import matplotlib.pyplot as plt # Library for plotting
-import matplotlib.patches as mpatches # Library for plot legend
-
 
 # TwoDArray is a class that provides a 2D lattice for the Monte Carlo simulation,
 # with features for changing the state at a given site, and indexing functions for
@@ -26,10 +24,10 @@ class TwoDArray:
         # Generate a random number between 1 and 10, if <= 5 populate with -1
         for i in range(0, self.size):
             for j in range(0, self.size):
-                spin = 1
+                spin = 1.0
                 randomValue = np.random.randint(1,11)
                 if (randomValue <= 5):
-                    spin = -1
+                    spin = -1.0
                 self.alloy[i][j] = spin
 
     # Prints the 2D array
@@ -157,7 +155,6 @@ class MonteCarlo:
 
     # Calculates and returns the average magnetization per site using
     def calculateAvgMagnetization(self):
-        #avg = abs((np.sum(self.twoDArray.alloy, None, float) + 0.0) / np.power(self.size, 2))
         avg = abs(np.average(self.avgMagArray))
         return avg
 
@@ -190,23 +187,19 @@ class MonteCarlo:
             if (i % numSpin == 0): # Record data every L^2 spin flip attempts
                 if (i / numSpin == initialNumDataPoints):
                     break
-                #self.avgMagArray[self.time] = self.calculateAvgMagnetization()
-                #self.magneticMomentArray[self.time] = self.calculateMagneticMoment()
-                self.avgMagArray[self.time] = np.absolute((float(self.totalEnergy)) / (self.size * self.size))/2
-                self.magneticMomentArray[self.time] = self.totalEnergy
+                self.avgMagArray[self.time] = abs(np.average(self.twoDArray.alloy))
+                self.magneticMomentArray[self.time] = np.sum(self.twoDArray.alloy)
                 self.energyArray[self.time] = self.totalEnergy
-                self.heatCapacityPerSite[self.time] = self.calculateHeatCapcaityPerSite()
                 self.time += 1
 
         # Determine the correlation time.
         self.correlationFxn = self.estimated_autocorrelation(self.avgMagArray)
         self.correlationTime = self.integrateCorrelation(self.correlationFxn)
         # Remove non-equilibrium data using correlation time.
-        scaledCorrelationTime = int(1 * self.correlationTime)
+        scaledCorrelationTime = int(8 * self.correlationTime)
         self.avgMagArray = self.avgMagArray[scaledCorrelationTime:]
         self.energyArray = self.energyArray[scaledCorrelationTime:]
         self.magneticMomentArray = self.magneticMomentArray[scaledCorrelationTime:]
-        self.heatCapacityPerSite = self.heatCapacityPerSite[scaledCorrelationTime:]
 
     # Calculate the correlation data, returns a correlation function
     def estimated_autocorrelation(self, x):
@@ -237,7 +230,6 @@ class MonteCarlo:
 
     # Calculates the number of independent trials using the correlation time
     def calculateNumberOfIndpTrials(self):
-        #print(self.avgMagArray.size)
         self.ntrials = int(self.avgMagArray.size / (2 * self.correlationTime))
 
     # Calculates the and returns the uncertainty using Bootstrapping method
@@ -255,7 +247,7 @@ class MonteCarlo:
         return avp
 
     # Calculates the the variance
-    def calculateHeatCapcaityPerSite(self):
+    def calculateHeatCapacityPerSite(self):
         # Cv = (1 / (Kb * T^2 * L^2)) * (<E^2> - <E>^2)
         var = np.var(self.energyArray)
         Cv = (1.0 / (np.power(self.size, 2) * np.power(self.temperature, 2))) * var
@@ -265,7 +257,6 @@ class MonteCarlo:
     def calculateMagneticSusceptibilityPerSite(self):
         # x = beta * (1 / L^2) (<m^2> - <m>^2), beta = 1 / T
         var = np.var(self.magneticMomentArray)
-        #var = np.var(self.avgMagArray)
         x = (1.0 / self.temperature) * (1.0 / np.power(self.size, 2 )) * var
         return x
 
@@ -314,72 +305,159 @@ def simulation():
     for i in range(1, numTemps):
         temps[i] = temps[i - 1] + dT
     # Create arrays for plotting data
+    plotAvgMags = []
+    plotAvgMagsUncert = []
+    plotHeatCap = []
+    plotHeatCapUncert = []
+    plotMagSus = []
+    plotMagSusUncert = []
+    plotCorrelation = []
 
-    # Create array's for the experimental data
-    avgMagArray = np.zeros(numTemps)
-    magneticSusceptibilityArray = np.zeros(numTemps)
-    heatCapacityArray = np.zeros(numTemps)
-    # Create array's for the uncertainties
-    uncertMagArrray = np.zeros(numTemps)
-    uncertMagSusArray = np.zeros(numTemps)
-    uncertHeatCapArray = np.zeros(numTemps)
     # For a series of system sizes and temperatures run the simulation
-    sizes = [4]
+    sizes = [4, 8, 16, 32]
     for L in sizes:
+        # Create array's for the experimental data
+        avgMagArray = np.zeros(numTemps)
+        magneticSusceptibilityArray = np.zeros(numTemps)
+        heatCapacityArray = np.zeros(numTemps)
+        correlationTimeArray = np.zeros(numTemps)
+        # Create array's for the uncertainties
+        uncertMagArrray = np.zeros(numTemps)
+        uncertMagSusArray = np.zeros(numTemps)
+        uncertHeatCapArray = np.zeros(numTemps)
         # Create a new Monte Carlo
         temp = MonteCarlo(L, 1.0)
         for i in range(0, numTemps):
+            print("Monte Carlo Simulation for size ", L, " @ temp ", temps[i])
             temp.temperature = temps[i]
-            temp.metropolisAlgorithm(5000)
+            temp.metropolisAlgorithm(3000000)
             # Calcultate experimental data for given temperature
             avgMagArray[i] = temp.calculateAvgMagnetization()
             magneticSusceptibilityArray[i] = temp.calculateMagneticSusceptibilityPerSite()
-            heatCapacityArray[i] = temp.calculateHeatCapcaityPerSite()
+            heatCapacityArray[i] = temp.calculateHeatCapacityPerSite()
+            correlationTimeArray[i] = temp.correlationTime
             # Caclulate uncertainties for experimental values
             uncertMagArrray[i] = temp.bootStrappingMethod(temp.avgMagArray)
             uncertMagSusArray[i] = temp.bootStrappingMethod(magneticSusceptibilityArray)
-            uncertHeatCapArray[i] = temp.bootStrappingMethod(temp.heatCapacityPerSite)
+            uncertHeatCapArray[i] = temp.bootStrappingMethod(temp.energyArray) / (L * L)
+        # Add data to macro plot list
+        plotAvgMags.append(avgMagArray)
+        plotAvgMagsUncert.append(uncertMagArrray)
+        plotHeatCap.append(heatCapacityArray)
+        plotHeatCapUncert.append(uncertHeatCapArray)
+        plotMagSus.append(magneticSusceptibilityArray)
+        plotMagSusUncert.append(uncertMagSusArray)
+        plotCorrelation.append(correlationTimeArray)
         # Calculate the exact values
         temp.calculateExactValues()
-        # Plot data to files as pdf's
-        plt.title("Average Magnetization Per Site vs. Temperature")
+
+    # Below is a bunch of code to plot data and save plots at PDF's to current directory
+    # Plot all avg mag data together
+    plt.title("Average Magnetization Per Site (<|m|>) vs. Temperature (T)")
+    plt.xlabel("T")
+    plt.ylabel("<|m|>")
+    fileName = "CummulativeAvgMag.pdf"
+    plt.grid('on')
+    j = 0
+    for s in sizes:
+        plt.errorbar(temps, plotAvgMags[j], plotAvgMagsUncert[j], label=(str(s) + "x" + str(s)))
+        j += 1
+    plt.plot(temp.exactTemps, temp.exactMagArray, label='Exact')
+    plt.legend()
+    plt.savefig(fileName)
+    plt.close()
+
+    # Plot all heat capacity data together
+    plt.title("Heat Capacity Per Site (Cv) vs. Temperature (T)")
+    plt.xlabel("T")
+    plt.ylabel("Cv")
+    fileName = "CummulativeHeatCap.pdf"
+    plt.grid('on')
+    j = 0
+    for s in sizes:
+        plt.errorbar(temps, plotHeatCap[j], plotHeatCapUncert[j], label=(str(s) + "x" + str(s)))
+        j += 1
+    plt.plot(temp.exactTemps, temp.exactHeatCapacity, label='Exact')
+    plt.legend()
+    plt.savefig(fileName)
+    plt.close()
+
+    # Plot all mag sus data together
+    plt.title("Magnetic Susceptibility Per Site (x) vs. Temperature (T)")
+    plt.xlabel("T")
+    plt.ylabel("x")
+    fileName = "CummulativeMagSus.pdf"
+    plt.grid('on')
+    j = 0
+    for s in sizes:
+        plt.errorbar(temps, plotMagSus[j], plotMagSusUncert[j], label=(str(s) + "x" + str(s)))
+        j += 1
+    plt.legend()
+    plt.savefig(fileName)
+    plt.close()
+
+    # Plot all of the correlation data together
+    plt.title("Correlation Times (time steps) vs. Temperature (T)")
+    plt.xlabel("T")
+    plt.ylabel("time steps (L^2 spin flip attempts)")
+    fileName = "CummulativeCorrelationTimes.pdf"
+    plt.grid('on')
+    j = 0
+    for s in sizes:
+        plt.plot(temps, plotCorrelation[j], label=(str(s) + "x" + str(s)))
+        j += 1
+    plt.legend()
+    plt.savefig(fileName)
+    plt.close()
+
+
+    # Plot everything separate
+    # Plot each system size avg mag data
+    j = 0
+    for s in sizes:
+        plt.title("Average Magnetization Per Site (<|m|>) vs. Temperature (T)")
         plt.xlabel("T")
         plt.ylabel("<|m|>")
-        fileName = str(L) + "x" + str(L) + "AvgMag.pdf"
-        plt.errorbar(temps, avgMagArray, uncertMagArrray, label='Experimental')
+        plt.grid('on')
+        fileName = str(s) + "x" + str(s) + "AvgMag.pdf"
+        plt.errorbar(temps, plotAvgMags[j], plotAvgMagsUncert[j], label="Experimental")
         plt.plot(temp.exactTemps, temp.exactMagArray, label='Exact')
         plt.legend()
-        plt.grid('on')
         plt.savefig(fileName)
+        j += 1
         plt.close()
-        plt.errorbar(temps, magneticSusceptibilityArray, uncertMagSusArray)
-        plt.title("Magnetic Susceptibility Per Site vs. Temperature")
+
+
+    # Plot each system size mag sus data
+    j = 0
+    for s in sizes:
+        plt.title("Magnetic Susceptibility Per Site (x) vs. Temperature (T)")
         plt.xlabel("T")
         plt.ylabel("x")
-        fileName = str(L) + "x" + str(L) + "MagSuscept.pdf"
         plt.grid('on')
+        fileName = str(s) + "x" + str(s) + "MagSus.pdf"
+        plt.errorbar(temps, plotMagSus[j], plotAvgMagsUncert[j], label="Experimental")
+        plt.legend()
         plt.savefig(fileName)
+        j += 1
         plt.close()
-        plt.errorbar(temps, heatCapacityArray, uncertHeatCapArray, label='Experimental')
-        plt.plot(temp.exactTemps, temp.exactHeatCapacity, label='Exact')
-        plt.title("Heat Capacity Per Site vs. Temperature")
+
+    # Plot each system heat capacity data
+    j = 0
+    for s in sizes:
+        plt.title("Heat Capacity Per Site (Cv) vs. Temperature (T)")
         plt.xlabel("T")
         plt.ylabel("Cv")
-        fileName = str(L) + "x" + str(L) + "HeatCapacity.pdf"
-        plt.legend()
         plt.grid('on')
+        fileName = str(s) + "x" + str(s) + "HeatCapacity.pdf"
+        plt.errorbar(temps, plotHeatCap[j], plotHeatCapUncert[j], label="Experimental")
+        plt.plot(temp.exactTemps, temp.exactHeatCapacity, label='Exact')
+        plt.legend()
         plt.savefig(fileName)
+        j += 1
         plt.close()
 
 
-# Run the simulation
+# RUN THE SIMULATION!
 simulation()
 
-
-#print("The correlation time is: ", temp.correlationTime)
-#print("avgMagArray: ", avgMagArray)
-#print("magneticSusceptibilityArray: ", magneticSusceptibilityArray)
-#print("heatCapacityArray: ", heatCapacityArray)
-#print("uncertaintyArrary: ", uncertMagArrray)
-#print("uncertMagSusArray: ", uncertMagSusArray)
-#print("uncertHeatCapArray: ", uncertHeatCapArray)
