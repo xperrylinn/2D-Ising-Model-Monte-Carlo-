@@ -81,31 +81,46 @@ print("Hello World: Question 2")
 ##########PRACTICE############
 # m = re.match(r"(\w+) (\w+)", "Isaac Newton, physicist")
 m2 = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s*)", "ITEM: ATOMS id type vx vy vz")
-print(m2.group(0), "ground(0)")
-print(m2.group(1), "group(1)")
-print(m2.group(2), "group(2)")
-print(m2.group(3), "group(3)")
-print(m2.group(4), "group(4)")
-print(m2.group(5), "group(5)")
+if (m2 is None):
+    print("NONE - NO MATCH")
+else:
+    print(m2.group(0), "ground(0)")
+    print(m2.group(1), "group(1)")
+    print(m2.group(2), "group(2)")
+    print(m2.group(3), "group(3)")
+    print(m2.group(4), "group(4)")
+    print(m2.group(5), "group(5)")
 
 # Process the LAMMPS velocities.dump file
 velocitiesFile = open("velocitiesdump2.txt", "r") # Open the file
 lines2 = velocitiesFile.readlines() # Put all lines of the file into a list
-lines2 = lines2[9:] # Remove the first 8 lines, they are part of the header
-lines2 = lines2[:-19] # Remove the last 19 lines, not needed
 
 #Test
-print(lines2[0])
+print("The size of lines2 is: ", len(lines2))
+print("MATH: ", len(lines2) - 9 * 100)
 
 # Create arrays to hold the data
-numberDataPoints2 = len(lines2)
-atomNumber = np.arange(numberDataPoints2)
-velocity = np.arange(numberDataPoints2)
+numberDataPoints2 = 500 * 100 # 500 velocities per coordinate, have 100 measurements
+# atomNumber = np.arange(numberDataPoints2)
+# velocities = np.arange(numberDataPoints2)
+velocities = []
 
 # Store the LAMMPS data
-# i = 0 # index, used to set data of data array's
-# for line in lines2:
+i = 0 # index, used to set data of data array's
+for line in lines2:
     # Order of data: id type vx vy vz
+    m2 = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s*)", line)
+    if (m2 is None): #
+        # Do nothing
+        a = None
+    else:
+        # velocities[i] = float(m2.group(3)) # Take only group 3, the vx
+        velocities.append(float(m2.group(3))) # Take only group 3, the vx
+
+    i += 1
+
+print("velocities has size: ", len(velocities))
+print(velocities)
 
 
 
