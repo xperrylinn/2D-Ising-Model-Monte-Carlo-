@@ -5,6 +5,8 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+
 # ##########PRACTICE############
 # # m = re.match(r"(\w+) (\w+)", "Isaac Newton, physicist")
 # m = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s*)", " 0         1112   -1874.2011    -1945.926    71.724903, physicist")
@@ -120,7 +122,33 @@ for line in lines2:
     i += 1
 
 print("velocities has size: ", len(velocities))
-print(velocities)
+#print(velocities)
+
+# TODO: Pick 100 data points randomly out of the velocities and generate a histogram
+# TODO: Check to see if I need to remove nonequilibrium data!
+upperBound = len(velocities)
+randomVel = np.arange(10000) # Create an array to hold the sample of 1000 velocities
+for i in range(0, 10000): # TODO: Should only be 100 data points, 10,000 looks better though. Need to remove eq. data?
+    randomIndex = np.random.randint(0, upperBound)
+    randomVel[i] = velocities[randomIndex]
+
+## Plot experimental and exact distribution
+plt.hist(randomVel, 15)
+
+
+# Calcualte exact distribution
+T = 600 # units of Kelvin
+kB = 8.6173303 * np.power(10.0, -5.0) # units of eV/K
+m = 0.0110284  # units of eVps^2/Angstrom^2
+velocitiesExact = np.arange(-10, 11, dtype=float)
+print(velocitiesExact)
+distn = np.arange(21, dtype=float)
+for vel in velocitiesExact: # vel has units of Angstroms/picosecond
+    distn[vel] = 500.0 * np.power((m / (2.0 * np.pi * kB * T)), 1.0/2.0) * (4 * np.pi * np.power(vel, 2.0)) * np.exp((-1.0 * m * np.power(vel, 2.0)) / (2.0 * kB * T))
+
+print(distn)
+plt.plot(velocitiesExact, distn)
+plt.show()
 
 
 
