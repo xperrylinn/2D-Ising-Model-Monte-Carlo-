@@ -63,6 +63,7 @@ def thermoProperties():
 
     # Create a dynamic list to hold pressure data
     pressure = None # For questions 2 and 3
+    correlationTime = None
 
     # Read the LAMMPS outfile file and return the Pressure data
     def storeLAMMPSData():
@@ -119,7 +120,7 @@ def thermoProperties():
         print("Hello World from Correlation caclulateTimeCorrelationFxn")
 
         # Process the LAMMPS file with pressure
-        pressureDataFile = open("stdoutPressurePd.txt", "r") # Open the file
+        pressureDataFile = open("pressureDataQ2.txt", "r") # Open the file
         lines3 = pressureDataFile.readlines() # Put all lines of the file into a list
 
         # Create a dynamic list to hold pressure data
@@ -134,15 +135,29 @@ def thermoProperties():
             else: # Pattern matches, store the data
                 steps.append(int(m3.group(1)))
                 pressures.append(float(m3.group(2))) # Take only group 2, the pressure
+
+        # Plot the pressure data including non-equilibrium data
+        plt.title("Pressure vs Steps\n(w/ non-eq. data)")
+        plt.xlabel("Steps")
+        plt.ylabel("Pressure (bars)")
+        plt.plot(pressures)
+        plt.grid('on')
+        plt.savefig("pressureVsStepsNONEQ.pdf")
+        plt.close()
+
+        # Plot the pressure data including equilibrium data
         pressures = pressures[1000:] # Remove non-equilibrium data
         steps = steps[1000:]
-        plt.title("Maxwell Boltzman Distribution")
-        plt.xlabel("Velocity (Angstrom / ps)")
-        plt.ylabel("Density")
+        plt.title("Pressure vs Steps")
+        plt.xlabel("Steps")
+        plt.ylabel("Pressure (bars)")
         plt.plot(pressures)
         plt.grid('on')
         plt.savefig("pressureVsSteps.pdf")
         plt.close()
+
+
+
 
         # Calculate the correlation function
         averagePressure = np.average(pressures) # Calcualte avergae pressure
@@ -162,8 +177,8 @@ def thermoProperties():
         plt.savefig("correlationFunctionPressure.pdf")
         plt.close()
 
-        # Take the semilog of the correlation function
-        logCorrelationFunction = np.log(correlationFunction)
+        # Take the semilog of the correlation function from 0 - 1 ps
+        logCorrelationFunction = np.log(correlationFunction[:1000])
         plt.title("Semilog of Time-Displaced Correlation vs Steps")
         plt.xlabel("Steps")
         plt.ylabel("Correlation")
@@ -174,28 +189,27 @@ def thermoProperties():
 
         # Caculate the correlation time
         # Splice data to consider a regions that looks linear
-        logCorrelationFunction = logCorrelationFunction[:150]
-        logCorrelationFunction = logCorrelationFunction[50:]
-        steps = steps[:150]
-        steps = steps[50:]
-        slope = np.polyfit(steps, logCorrelationFunction, 1)[0]
+        logCorrelationFunction = logCorrelationFunction[:200]
+        logCorrelationFunction = logCorrelationFunction[25:]
+        slope = np.polyfit(np.arange(len(logCorrelationFunction)), logCorrelationFunction, 1)[0]
         # print("Slope of the semilog plot: ", slope[0])
-        correlationTime = -1.0 / slope
-        print("Correlation time: ", correlationTime)
-
+        correlationTime = -1.0 / slope # Currently has units of Steps
+        print("Correlation time (units of steps): ", correlationTime)
+        correlationTime *= 0.001 # Covert from units of Steps to units of ps
+        print("Correlation time (units of ps): ", correlationTime)
 
     # Question 4
     def calculateEquilibriumLatticeParameter():
         print("Calculating equilibrium lattice parameter")
 
-        # TODO: Calculate equilibirum pressures @ 600K for a = 3.90, 3.91, 3.92, 3.93, 3.94, 3.95
+
+        # Calculate average equilibrium pressures and plot vs volume
         avg_pressures = [] # average the pressure over each file
         for i in range(0, 6):
             # Process the LAMMPS files with pressure at each lattice parameter a
             fileName = "data4_9" + str(i) + ".txt"
             pressureDataFile = open(fileName, "r") # Open the file
             lines4 = pressureDataFile.readlines() # Put all lines of the file into a list
-
             temp = []
             # Store the LAMMPS pressure data into pressures list
             for line in lines4:
@@ -205,18 +219,49 @@ def thermoProperties():
                     pass # Do nothing
                 else: # Pattern matches, store the data
                     temp.append(float(m3.group(2))) # Take only group 2, the pressure
+            temp = temp[1000:] # Remove non-equilibrium data
             avg_pressures.append(np.average(temp))
         volumes = [np.power(3.90, 3), np.power(3.91, 3), np.power(3.92, 3), np.power(3.93, 3), np.power(3.94, 3), np.power(3.95, 3)]
         plt.title("Average Equilibrium Pressure vs Unit Cell Volume")
         plt.xlabel("Volume (Angstrom^3)")
         plt.ylabel("Pressure (bars)")
         plt.grid('on')
-        plt.plot(volumes, avg_pressures)
+        plt.scatter(volumes, avg_pressures)
         plt.savefig("pressureVsVolumeQ4.pdf")
         plt.close()
 
+        # Find line of best fit of average pressure vs volume
+        fittingParameters = np.polyfit(volumes, avg_pressures, 1)
+        slope = fittingParameters[0]
+        intercept = fittingParameters[1]
+        zeroPressureVolume = (-1 * intercept) / slope
+        print("zeroPressureVolume: ", zeroPressureVolume)
+        zeroPressureLatticeConstant = np.power(zeroPressureVolume, 1.0/3.0)
+        print("zeroPressureLatticeConstant: ", zeroPressureLatticeConstant)
 
-    # Run the code for PARTII questions
+        # Plot line of best fit and pressure data
+        plt.title("Pressure vs Unit Cell Volume")
+        plt.xlabel("Volume (Angstrom^3)")
+        plt.ylabel("Pressure (bars)")
+        plt.grid('on')
+        lineOfBestFit = []
+        for v in volumes:
+            lineOfBestFit.append(slope * v + intercept)
+        plt.scatter(volumes, avg_pressures)
+        plt.plot(volumes, lineOfBestFit, label = 'Line of best fit')
+        plt.legend()
+        plt.savefig("pressureVsVolumeFITTEDATAQ4.pdf")
+
+
+
+
+
+
+
+
+
+
+        # Run the code for PARTII questions
     storeLAMMPSData()
     velocityDistribution()
     caclulateTimeCorrelationFxn()
