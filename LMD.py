@@ -4,6 +4,8 @@
 import re
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+# from mpl_toolkits.mplot3d import Axes3D
 
 # PARTI, Question 1
 def plotEnergies():
@@ -58,12 +60,8 @@ def plotEnergies():
     plt.savefig("KineticVsStepQ1.pdf")
     plt.close()
 
-# PARTII
-def thermoProperties():
-
-    # Create a dynamic list to hold pressure data
-    pressure = None # For questions 2 and 3
-    correlationTime = None
+# PARTII, Questions 3 - 5
+def thermoPropertiesPd():
 
     # Read the LAMMPS outfile file and return the Pressure data
     def storeLAMMPSData():
@@ -95,7 +93,7 @@ def thermoProperties():
             randomVel[i] = velocities[randomIndex]
 
         ## Plot experimental and exact distribution
-        plt.hist(randomVel, 15)
+        plt.hist(randomVel, 16)
 
         # Calcualte exact distribution
         # Relevant constants
@@ -104,8 +102,10 @@ def thermoProperties():
         m = 0.0110284  # units of eVps^2/Angstrom^2
         velocitiesExact = np.arange(-10, 11, dtype=float)
         distn = np.arange(21, dtype=float)
+        i = 0
         for vel in velocitiesExact: # vel has units of Angstroms/picosecond
-            distn[vel] = 500.0 * np.power((m / (2.0 * np.pi * kB * T)), 1.0/2.0) * (4 * np.pi * np.power(vel, 2.0)) * np.exp((-1.0 * m * np.power(vel, 2.0)) / (2.0 * kB * T))
+            distn[i] = 11000.0 * np.power((m / (2.0 * np.pi * kB * T)), 1.0/2.0) * np.exp((-1.0 * m * np.power(vel, 2)) / (2.0 * kB * T))
+            i += 1
         plt.title("Maxwell Boltzman Distribution")
         plt.xlabel("Velocity (Angstrom / ps)")
         plt.ylabel("Density")
@@ -156,9 +156,6 @@ def thermoProperties():
         plt.savefig("pressureVsSteps.pdf")
         plt.close()
 
-
-
-
         # Calculate the correlation function
         averagePressure = np.average(pressures) # Calcualte avergae pressure
         correlationFunction = [] # List to hold correlation values
@@ -177,11 +174,11 @@ def thermoProperties():
         plt.savefig("correlationFunctionPressure.pdf")
         plt.close()
 
-        # Take the semilog of the correlation function from 0 - 1 ps
-        logCorrelationFunction = np.log(correlationFunction[:1000])
+        # Plot the semilog of the correlation function from 0 - 1 ps
+        logCorrelationFunction = np.log(correlationFunction[:100])
         plt.title("Semilog of Time-Displaced Correlation vs Steps")
         plt.xlabel("Steps")
-        plt.ylabel("Correlation")
+        plt.ylabel("log(C(t))")
         plt.plot(logCorrelationFunction)
         plt.grid('on')
         plt.savefig("semiLogCorrelationFunctionPressure.pdf")
@@ -198,13 +195,12 @@ def thermoProperties():
         correlationTime *= 0.001 # Covert from units of Steps to units of ps
         print("Correlation time (units of ps): ", correlationTime)
 
-    # Question 4
+    # Question 4 and 5
     def calculateEquilibriumLatticeParameter():
-        print("Calculating equilibrium lattice parameter")
 
-
+        # Question 4
         # Calculate average equilibrium pressures and plot vs volume
-        avg_pressures = [] # average the pressure over each file
+        avg_pressures600K = [] # average the pressure over each file
         for i in range(0, 6):
             # Process the LAMMPS files with pressure at each lattice parameter a
             fileName = "data4_9" + str(i) + ".txt"
@@ -220,14 +216,170 @@ def thermoProperties():
                 else: # Pattern matches, store the data
                     temp.append(float(m3.group(2))) # Take only group 2, the pressure
             temp = temp[1000:] # Remove non-equilibrium data
-            avg_pressures.append(np.average(temp))
+            avg_pressures600K.append(np.average(temp))
         volumes = [np.power(3.90, 3), np.power(3.91, 3), np.power(3.92, 3), np.power(3.93, 3), np.power(3.94, 3), np.power(3.95, 3)]
+
+        # Plot the average equilbirum pressures vs volume
+        plt.title("Average Equilibrium Pressure vs Unit Cell Volume")
+        plt.xlabel("Volume (Angstrom^3)")
+        plt.ylabel("Pressure (bars)")
+        plt.grid('on')
+        plt.scatter(volumes, avg_pressures600K)
+        plt.savefig("pressureVsVolumeQ4.pdf")
+        plt.close()
+
+        # Find line of best fit of average pressure vs volume
+        fittingParameters = np.polyfit(volumes, avg_pressures600K, 1)
+        slope = fittingParameters[0]
+        intercept = fittingParameters[1]
+        zeroPressureVolumeAt600K = (-1 * intercept) / slope
+        print("zeroPressureVolume: ", zeroPressureVolumeAt600K)
+        zeroPressureLatticeConstantAt600K = np.power(zeroPressureVolumeAt600K, 1.0/3.0)
+        print("zeroPressureLatticeConstant: ", zeroPressureLatticeConstantAt600K)
+        latticeConstantAt600K = zeroPressureLatticeConstantAt600K
+
+        # Plot line of best fit and pressure data
+        plt.title("Pressure vs Unit Cell Volume")
+        plt.xlabel("Volume (Angstrom^3)")
+        plt.ylabel("Pressure (bars)")
+        plt.grid('on')
+        lineOfBestFit = []
+        for v in volumes:
+            lineOfBestFit.append(slope * v + intercept)
+        plt.scatter(volumes, avg_pressures600K)
+        plt.plot(volumes, lineOfBestFit, label = 'Line of best fit')
+        plt.legend()
+        plt.savefig("pressureVsVolumeFITTEDATAQ4.pdf")
+
+        # Calculate isothermal bulk modulus
+        bulkModulus = (-1 * zeroPressureVolumeAt600K) * slope
+        print("isothermal bulk modulus: ", bulkModulus)
+
+        # Question 5
+        # Calculate average equilibrium pressures and plot vs volume for 950K
+        avg_pressures950K = [] # average the pressure over each file
+        for i in range(0, 6):
+            # Process the LAMMPS files with pressure at each lattice parameter a
+            fileName = "data5_9" + str(i) + ".txt"
+            pressureDataFile = open(fileName, "r") # Open the file
+            lines4 = pressureDataFile.readlines() # Put all lines of the file into a list
+            temp = []
+            # Store the LAMMPS pressure data into pressures list
+            for line in lines4:
+                # Order of data: step temp pressure
+                m3 = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)", line)
+                if (m3 is None): # Ignore if pattern doesn't match
+                    pass # Do nothing
+                else: # Pattern matches, store the data
+                    temp.append(float(m3.group(3))) # Take only group 2, the pressure
+            temp = temp[1000:] # Remove non-equilibrium data
+            avg_pressures950K.append(np.average(temp))
+
+        # Plot the average equilbirum pressures vs volume for 950K
+        plt.title("Average Equilibrium Pressure vs Unit Cell Volume/nat 950K")
+        plt.xlabel("Volume (Angstrom^3)")
+        plt.ylabel("Pressure (bars)")
+        plt.grid('on')
+        plt.scatter(volumes, avg_pressures950K)
+        plt.savefig("pressureVsVolumeQ5.pdf")
+        plt.close()
+
+        # Find line of best fit of average pressure vs volume for 950K
+        fittingParameters = np.polyfit(volumes, avg_pressures950K, 1)
+        slope = fittingParameters[0]
+        intercept = fittingParameters[1]
+        zeroPressureVolumeAt950K = (-1 * intercept) / slope
+        print("zeroPressureVolume: ", zeroPressureVolumeAt950K)
+        zeroPressureLatticeConstantAt950K = np.power(zeroPressureVolumeAt950K, 1.0/3.0)
+        print("zeroPressureLatticeConstant: ", zeroPressureLatticeConstantAt950K)
+        latticeConstantAt950K = zeroPressureLatticeConstantAt950K
+
+        # Plot line of best fit and pressure data for 950K
+        plt.title("Pressure vs Unit Cell Volume\nat 950K")
+        plt.xlabel("Volume (Angstrom^3)")
+        plt.ylabel("Pressure (bars)")
+        plt.grid('on')
+        lineOfBestFit = []
+        for v in volumes:
+            lineOfBestFit.append(slope * v + intercept)
+        plt.scatter(volumes, avg_pressures950K)
+        plt.plot(volumes, lineOfBestFit, label = 'Line of best fit')
+        plt.legend()
+        plt.savefig("pressureVsVolumeFITTEDATAQ5.pdf")
+        plt.close()
+
+        # Calculate the percentage the lattice parameter has increased from 600K to 950K relative to 600K
+        percentIncrease = (abs(latticeConstantAt950K - latticeConstantAt600K) / latticeConstantAt600K) * 100
+        print("percent increase in lattice param from 600K to 950K: ", percentIncrease)
+
+        # Estimate the value of the thermal expansion coefficient
+        temps = [600, 950]
+        latticeParameters = [latticeConstantAt600K, latticeConstantAt950K]
+        plt.title("Lattice Parameter (a) vs Temperature (T)")
+        plt.xlabel("T (K)")
+        plt.ylabel("a (Angstrom)")
+        plt.grid('on')
+        plt.scatter(temps, latticeParameters)
+        fittingParameters = np.polyfit(temps, latticeParameters, 1)
+        slope = fittingParameters[0]
+        intercept = fittingParameters[1]
+        for v in volumes:
+            lineOfBestFit = []
+        for t in temps:
+            lineOfBestFit.append(slope * t + intercept)
+        plt.plot(temps, lineOfBestFit)
+        plt.savefig("latticeParameterVsTempQ5.pdf")
+        plt.close()
+
+        # Calculate thermal expansion coefficient
+        thermExpCoefficient = (1 / latticeConstantAt600K) * slope
+        print("Thermal expansion coefficient: ", thermExpCoefficient)
+
+
+    # Run the code for PARTII questions
+    storeLAMMPSData()
+    velocityDistribution()
+    caclulateTimeCorrelationFxn()
+    calculateEquilibriumLatticeParameter()
+
+# PARTIII, Questions 6 - 10
+def thermoPropertiesPdH():
+
+    # Question 6
+    def calculateLatticeConstantAndBulkModulus():
+
+        # Question 6
+        # Calculate lattice parameter and bulk modulus
+        avg_pressures = [] # average the pressure over each file
+        for i in range(0, 10):
+            # Process the LAMMPS files with pressure at each lattice parameter a
+            if (i == 10):
+                fileName = "data6_00.txt"
+            else:
+                fileName = "data6_9" + str(i) + ".txt"
+            pressureDataFile = open(fileName, "r") # Open the file
+            lines4 = pressureDataFile.readlines() # Put all lines of the file into a list
+            temp = []
+            # Store the LAMMPS pressure data into pressures list
+            for line in lines4:
+                # Order of data: step pressure
+                m3 = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)", line)
+                if (m3 is None): # Ignore if pattern doesn't match
+                    pass # Do nothing
+                else: # Pattern matches, store the data
+                    temp.append(float(m3.group(2))) # Take only group 2, the pressure
+            temp = temp[1000:] # Remove non-equilibrium data
+            avg_pressures.append(np.average(temp))
+        volumes = [np.power(3.90, 3), np.power(3.91, 3), np.power(3.92, 3), np.power(3.93, 3), np.power(3.94, 3), np.power(3.95, 3),
+                   np.power(3.96, 3), np.power(3.97, 3), np.power(3.98, 3), np.power(3.99, 3)]
+
+        # Plot the average equilbirum pressures vs volume
         plt.title("Average Equilibrium Pressure vs Unit Cell Volume")
         plt.xlabel("Volume (Angstrom^3)")
         plt.ylabel("Pressure (bars)")
         plt.grid('on')
         plt.scatter(volumes, avg_pressures)
-        plt.savefig("pressureVsVolumeQ4.pdf")
+        plt.savefig("pressureVsVolumeQ6.pdf")
         plt.close()
 
         # Find line of best fit of average pressure vs volume
@@ -238,10 +390,11 @@ def thermoProperties():
         print("zeroPressureVolume: ", zeroPressureVolume)
         zeroPressureLatticeConstant = np.power(zeroPressureVolume, 1.0/3.0)
         print("zeroPressureLatticeConstant: ", zeroPressureLatticeConstant)
+        latticeConstant = zeroPressureLatticeConstant
 
         # Plot line of best fit and pressure data
-        plt.title("Pressure vs Unit Cell Volume")
-        plt.xlabel("Volume (Angstrom^3)")
+        plt.title("Pressure (P) vs Unit Cell Volume (V)")
+        plt.xlabel("V (Angstrom^3)")
         plt.ylabel("Pressure (bars)")
         plt.grid('on')
         lineOfBestFit = []
@@ -250,29 +403,68 @@ def thermoProperties():
         plt.scatter(volumes, avg_pressures)
         plt.plot(volumes, lineOfBestFit, label = 'Line of best fit')
         plt.legend()
-        plt.savefig("pressureVsVolumeFITTEDATAQ4.pdf")
+        plt.savefig("pressureVsVolumeFITTEDATAQ6.pdf")
+        plt.close()
+
+        # Calculate isothermal bulk modulus
+        bulkModulus = (-1 * zeroPressureVolume) * slope
+        print("isothermal bulk modulus: ", bulkModulus)
+
+        # Calculate percent expansion of lattice constant, relative to pure Pd
+        # from PARTII lattice constant =  3.9235624467028063
+        percentExpansion = (abs(3.9235624467028063 - zeroPressureLatticeConstant) / 3.9235624467028063) * 100
+        print("percent expansion: ", percentExpansion)
+
+    def problem7():
+        print("Hello World! from question7")
+
+        # TODO: Parse the coordinate dump file for coordinates of a single H atom
+        # Process the LAMMPS file with H atoms coordinates
+        hydrogenAtomCoordinateDataFile = open("HAtomCoordinatesdumpQ7Q8Q9.txt", "r") # Open the file
+        lines3 = hydrogenAtomCoordinateDataFile.readlines() # Put all lines of the file into a list
+
+        # Create a dynamic list to hold h atoms coordinate data
+        xu = []
+        yu = []
+        zu = []
+        # Store the LAMMPS pressure data into pressures list
+        for line in lines3:
+            # Order of data: id type xu yu zu
+            m = re.match("(?:\s*)(504)(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)", line)
+            if (m is None): # Ignore if pattern doesn't match
+                pass # Do nothing
+            else: # Pattern matches, store the data
+                xu.append(m.group(3))
+                yu.append(m.group(4))
+                zu.append(m.group(5))
+
+        # Plot x vs y coordinate of single H-atom
+        plt.title("y coordinate vs x coordinate\nof single H-atom")
+        plt.xlabel("x (Angstrom)")
+        plt.ylabel("y (Angstrom)")
+        plt.grid('on')
+        plt.plot(xu, yu)
+        plt.savefig("yVsXHAtomCoordinateQ7.pdf")
 
 
 
 
 
 
-
-
-
-
-        # Run the code for PARTII questions
-    storeLAMMPSData()
-    velocityDistribution()
-    caclulateTimeCorrelationFxn()
-    calculateEquilibriumLatticeParameter()
+    calculateLatticeConstantAndBulkModulus()
+    problem7()
 
 
 
 
 ####RUN####
-# plotEnergies() # PARTI, Question 1
-thermoProperties() # PARTII, Questions 2, 3, 4, 5
+print("PARTI")
+plotEnergies() # PARTI, Question 1
+print("PARTII")
+thermoPropertiesPd() # PARTII, Questions 2, 3, 4, 5
+print("PARTIII")
+thermoPropertiesPdH() # PARTIII, Questions 6, 7, 8, 9, 10
+
 
 
 

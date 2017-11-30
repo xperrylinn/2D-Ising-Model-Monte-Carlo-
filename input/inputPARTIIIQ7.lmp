@@ -1,0 +1,35 @@
+#---------------------------- Simulation Setup --------------------------------#
+  units             metal
+  boundary          p p p
+
+  # Read atoms from file.
+  read_data         Pd_H.dat
+  change_box        all x scale 1.0148 y scale 1.0148 z scale 1.0148 remap units lattice
+
+  # Interatomic potential information.
+  pair_style        eam
+  pair_coeff        1 1 Pd.eam
+  pair_coeff        2 2 H.eam
+
+  # Create a group-ID to allow dumping of only H-atom coordinates
+  group             pd type 1 
+  group             h type 2
+
+  # Integration scheme.
+  fix               f1 all nve
+  timestep          0.001
+
+  # Output: thermodynamic information.
+  thermo_style      custom step temp press
+  thermo            10
+
+  # Output: atoms coordinates and velocities
+  dump              d1 pd custom 1 coordinatesPd.dump id type xu yu zu
+  dump              d2 h custom 1 coordinatesH.dump id type xu yu zu
+#------------------------------------------------------------------------------#
+
+
+#----------------------------- Run Simulation ---------------------------------#
+  velocity          all create 1714 28459 
+  run               50000
+#------------------------------------------------------------------------------#
