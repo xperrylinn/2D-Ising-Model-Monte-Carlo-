@@ -323,8 +323,8 @@ def thermoPropertiesPd():
         fittingParameters = np.polyfit(temps, latticeParameters, 1)
         slope = fittingParameters[0]
         intercept = fittingParameters[1]
-        for v in volumes:
-            lineOfBestFit = []
+        # for v in volumes:
+        lineOfBestFit = []
         for t in temps:
             lineOfBestFit.append(slope * t + intercept)
         plt.plot(temps, lineOfBestFit)
@@ -415,20 +415,21 @@ def thermoPropertiesPdH():
         percentExpansion = (abs(3.9235624467028063 - zeroPressureLatticeConstant) / 3.9235624467028063) * 100
         print("percent expansion: ", percentExpansion)
 
-    def problem7():
+    # Questions 7, 9
+    def problem79():
         print("Hello World! from question7")
 
         # TODO: Parse the coordinate dump file for coordinates of a single H atom
         # Process the LAMMPS file with H atoms coordinates
-        hydrogenAtomCoordinateDataFile = open("HAtomCoordinatesdumpQ7Q8Q9.txt", "r") # Open the file
-        lines3 = hydrogenAtomCoordinateDataFile.readlines() # Put all lines of the file into a list
+        hydrogenAtomCoordinateDataFile = open("coordinatesHdump.txt", "r") # Open the file
+        lines = hydrogenAtomCoordinateDataFile.readlines() # Put all lines of the file into a list
 
         # Create a dynamic list to hold h atoms coordinate data
         xu = []
         yu = []
         zu = []
         # Store the LAMMPS pressure data into pressures list
-        for line in lines3:
+        for line in lines:
             # Order of data: id type xu yu zu
             m = re.match("(?:\s*)(504)(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)", line)
             if (m is None): # Ignore if pattern doesn't match
@@ -445,14 +446,93 @@ def thermoPropertiesPdH():
         plt.grid('on')
         plt.plot(xu, yu)
         plt.savefig("yVsXHAtomCoordinateQ7.pdf")
+        plt.close()
+
+        # Store each hydrogen data to in a list. Each hydrogen data is a list of coordinates for each time step
+        atomNumber = [501, 502, 503, 504, 505, 506, 507, 508, 509, 510] # Numbered according to dump file
+        hydrogenDatas = []
+        for aN in atomNumber: # For each of the hydrogen atoms
+            ithHydrogenData = [] # Create a list to hold the ith hydrogens coordintaes for each time step
+            for line in lines: # Iterate line by line through the filea and collent the ith Hyrodens data
+                    matchStrng = "(?:\s*)(" + str(aN) + ")(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)"
+                    m = re.match(matchStrng, line)
+                    if (m is None): # Ignore if pattern doesn't match
+                        pass # Do nothing
+                    else: # Pattern matches, store the data
+                        coordinateTuple = (float(m.group(3)), float(m.group(4)), float(m.group(5))) # (x, y, z)
+                        ithHydrogenData.append(coordinateTuple)
+            hydrogenDatas.append(ithHydrogenData)
+        print("len of hydrogen datas: ", len(hydrogenDatas))
+        print("len of ith hydrogen data: ", len(hydrogenDatas[0]))
+        print("len of ith hydrogen data at time step zero: ", len(hydrogenDatas[0][0]))
+
+        # # Key
+        # hyrdogenDatas = [h_atom1_data, h_atom2_data, ..., h_atom10_data]
+        # hydrogenDatas[i] = [(x0, y0, z0), (x1, y1, z1), ... ,(x50000, y50000, z50000)]
+        # hydrogenDatas[i][0] = xj j = 0, 1, 2, ... , 50000
+        # hydrogenDatas[i][1] = yj j = 0, 1, 2, ... , 50000
+        # hydrogenDatas[i][2] = zj j = 0, 1, 2, ... , 50000
+
+        # Caclulate the average MSD for one hydrogen as a test
+        hydrogenMSD = [] # Create a list to hold MSD data for each time displacement
+        hD = hydrogenDatas[0] # Start simple. Just calculate the MSSF
+        timeDisplacements = np.arange(0, 5000)
+        print(timeDisplacements)
+        for t in timeDisplacements: # For each time dispalcement t..
+            terms = []
+            for t0 in range(0, len(hD)): # For each time origin cacluate displacement from time t + t0 later
+                if (t0 + t >= len(hD)): # "Padding w/ zeros"
+                    break;
+                rt = hD[t0 + t] # Coordiante at some timer later
+                r0 = hD[t0] # Coordinates at some time origin
+                eucldieanDistance = ((rt[0] - r0[0])**2 + (rt[1] - r0[1])**2 + (rt[2] - r0[2])**2)
+                terms.append(eucldieanDistance)
+            # Average the displacements for the given time displacement
+            print(np.average(terms))
+            hydrogenMSD.append(np.average(terms))
+        # print("length of hydrogenMSF: ", len(hydrogenMSD))
+        # print("length of timeDisplacements: ", len(timeDisplacements))
 
 
+        # Find line of best fit for MSD data
+        fittingParameters = np.polyfit(timeDisplacements, hydrogenMSD, 1)
+        slope = fittingParameters[0]
+        intercept = fittingParameters[1]
+        lineOfBestFit = []
+        for t in timeDisplacements:
+            lineOfBestFit.append(slope * t + intercept)
+        timeDisplacements *= 0.01 # Convert from steps to ps
+
+        # Plot MSD data form LAMMPS
+        MSDDataFile = open("MSDData.txt", "r") # Open the file
+        lines = MSDDataFile.readlines() # Put all lines of the file into a list
+
+        # Create a dynamic list to hold h atoms coordinate data
+        msd = []
+        step = []
+        # Store the LAMMPS msd into msd list
+        for line in lines:
+            # Order of data: step temp msd
+            m = re.match("(?:\s*)(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)", line)
+            if (m is None): # Ignore if pattern doesn't match
+                pass # Do nothing
+            else: # Pattern matches, store the data
+                stepVal = float(m.group(1))*0.001
+                msdVal = float(m.group(3))
+                step.append(stepVal)
+                msd.append(msdVal)
+
+        # Plotting
+        plt.plot(timeDisplacements, hydrogenMSD, label =  'Calculated MSD')
+        plt.plot(step,  msd, label = 'LAMMPS MSD')
+        plt.plot(timeDisplacements, lineOfBestFit)
+        plt.show()
+        plt.close()
 
 
-
-
+    # Solve the problems
     calculateLatticeConstantAndBulkModulus()
-    problem7()
+    problem79()
 
 
 
