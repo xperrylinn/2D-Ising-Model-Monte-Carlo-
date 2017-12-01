@@ -63,10 +63,6 @@ def plotEnergies():
 # PARTII, Questions 3 - 5
 def thermoPropertiesPd():
 
-    # Read the LAMMPS outfile file and return the Pressure data
-    def storeLAMMPSData():
-        print("Hello World from storeLAMMPSData")
-
     # Question 2
     def velocityDistribution():
         # Process the LAMMPS velocities.dump file
@@ -335,9 +331,7 @@ def thermoPropertiesPd():
         thermExpCoefficient = (1 / latticeConstantAt600K) * slope
         print("Thermal expansion coefficient: ", thermExpCoefficient)
 
-
     # Run the code for PARTII questions
-    storeLAMMPSData()
     velocityDistribution()
     caclulateTimeCorrelationFxn()
     calculateEquilibriumLatticeParameter()
@@ -477,19 +471,22 @@ def thermoPropertiesPdH():
         hydrogenMSD = [] # Create a list to hold MSD data for each time displacement
         hD = hydrogenDatas[0] # Start simple. Just calculate the MSSF
         timeDisplacements = np.arange(0, 5000)
-        print(timeDisplacements)
         for t in timeDisplacements: # For each time dispalcement t..
-            terms = []
-            for t0 in range(0, len(hD)): # For each time origin cacluate displacement from time t + t0 later
-                if (t0 + t >= len(hD)): # "Padding w/ zeros"
-                    break;
-                rt = hD[t0 + t] # Coordiante at some timer later
-                r0 = hD[t0] # Coordinates at some time origin
-                eucldieanDistance = ((rt[0] - r0[0])**2 + (rt[1] - r0[1])**2 + (rt[2] - r0[2])**2)
-                terms.append(eucldieanDistance)
+            ithHydrogenMSDAtT = [] # list will hold the average MSD for each H atoms at a given time displacement
+            for hD in hydrogenDatas: # For each hydrogen calculate the MSD at given time displacement, add to list above, then average
+                terms = []
+                for t0 in range(0, len(hD)): # Calculate the ith hydrogens data
+                    if (t0 + t >= len(hD)):
+                        break;
+                    rt = hD[t0 + t]
+                    r0 = hD[t0]
+                    eucldieanDistance = ((rt[0] - r0[0])**2 + (rt[1] - r0[1])**2 + (rt[2] - r0[2])**2)
+                    terms.append(eucldieanDistance)
+                ithHyrdogenMSD = np.average(terms)
+                print(ithHyrdogenMSD)
+                ithHydrogenMSDAtT.append(ithHyrdogenMSD)
+            hydrogenMSD.append(np.average(ithHydrogenMSDAtT))
             # Average the displacements for the given time displacement
-            print(np.average(terms))
-            hydrogenMSD.append(np.average(terms))
         # print("length of hydrogenMSF: ", len(hydrogenMSD))
         # print("length of timeDisplacements: ", len(timeDisplacements))
 
@@ -498,6 +495,9 @@ def thermoPropertiesPdH():
         fittingParameters = np.polyfit(timeDisplacements, hydrogenMSD, 1)
         slope = fittingParameters[0]
         intercept = fittingParameters[1]
+
+        # TODO: Calculate diffusion coefficient
+
         lineOfBestFit = []
         for t in timeDisplacements:
             lineOfBestFit.append(slope * t + intercept)
@@ -523,25 +523,63 @@ def thermoPropertiesPdH():
                 msd.append(msdVal)
 
         # Plotting
+        plt.title("Mean Square Displacement (MSD) vs. Time Displacement (dt)")
+        plt.xlabel("dt [ps]")
+        plt.ylabel("MSD [Angstrom^2]")
         plt.plot(timeDisplacements, hydrogenMSD, label =  'Calculated MSD')
         plt.plot(step,  msd, label = 'LAMMPS MSD')
-        plt.plot(timeDisplacements, lineOfBestFit)
-        plt.show()
+        plt.plot(timeDisplacements, lineOfBestFit, label = 'Line of best fit')
+        plt.legend()
+        plt.savefig("MSDVsTimeDisplacement.pdf")
         plt.close()
 
+    # Question 10
+    def velocityAutoCorrelationFxn():
+        print("Hello World from velocityAutoCorrelationFxn!")
+
+        # TODO: Store LAMMPS velocitiy dump file data
+
+        # Process the LAMMPS velocities.dump file
+        velocitiesFile = open("velocitiesHQ10dump2.txt", "r") # Open the file
+        lines = velocitiesFile.readlines() # Put all lines of the file into a list
+
+        # Store the LAMMPS data
+        # Store each hydrogen data to in a list. Each hydrogen data is a list of coordinates for each time step
+        atomNumber = [501, 502, 503, 504, 505, 506, 507, 508, 509, 510] # Numbered according to dump file
+        hydrogenDatas = []
+        for aN in atomNumber: # For each of the hydrogen atoms
+            ithHydrogenData = [] # Create a list to hold the ith hydrogens coordintaes for each time step
+            for line in lines: # Iterate line by line through the filea and collent the ith Hyrodens data
+                matchStrng = "(?:\s*)(" + str(aN) + ")(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)"
+                m = re.match(matchStrng, line)
+                if (m is None): # Ignore if pattern doesn't match
+                    pass # Do nothing
+                else: # Pattern matches, store the data
+                    velocityTuple = (float(m.group(3)), float(m.group(4)), float(m.group(5))) # (vx, vy, vz)
+                    ithHydrogenData.append(velocityTuple)
+            hydrogenDatas.append(ithHydrogenData)
+        print("len of hydrogen datas: ", len(hydrogenDatas))
+        print("len of ith hydrogen data: ", len(hydrogenDatas[0]))
+        print("len of ith hydrogen data at time step zero: ", len(hydrogenDatas[0][0]))
+
+        # TODO: Calculate velocity autocorrelation function (VACF)
+        # TODO: Plot VACF from t = 0.0 to 0.2 ps
+        # TODO: Calculate diffusion coefficient
+        # TODO: Compare diffusion coefficient to problem 9
 
     # Solve the problems
+    # calculateLatticeConstantAndBulkModulus()
+    # problem79()
     calculateLatticeConstantAndBulkModulus()
-    problem79()
 
 
 
 
 ####RUN####
-print("PARTI")
-plotEnergies() # PARTI, Question 1
-print("PARTII")
-thermoPropertiesPd() # PARTII, Questions 2, 3, 4, 5
+# print("PARTI")
+# plotEnergies() # PARTI, Question 1
+# print("PARTII")
+# thermoPropertiesPd() # PARTII, Questions 2, 3, 4, 5
 print("PARTIII")
 thermoPropertiesPdH() # PARTIII, Questions 6, 7, 8, 9, 10
 
