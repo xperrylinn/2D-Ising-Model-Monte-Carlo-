@@ -4,8 +4,6 @@
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-# from mpl_toolkits.mplot3d import Axes3D
 
 # PARTI, Question 1
 def plotEnergies():
@@ -35,29 +33,41 @@ def plotEnergies():
         kineticEnergy[i] = float(m.group(5))
         i += 1
 
+    steps = np.arange(numberDataPoints, dtype=float)
+    steps *= 0.001 # Convert from units of steps to ps
+    print(steps)
+
     # Plot total energy vs. steps
-    plt.title("Total Energy (eV) vs. Steps")
-    plt.xlabel("Steps")
-    plt.ylabel("Total Energy")
+    plt.title("Total Energy (TE) vs. Time (t)")
+    plt.xlabel("t [ps]")
+    plt.xlim([0.0, 0.10])
+    plt.ylabel("TE [eV]")
+    plt.ylim([-1875, -1872])
     plt.grid('on')
     plt.plot(steps, totalEnergy)
-    plt.savefig("TEvsStepsQ1.pdf")
+    plt.savefig("TEvsTimeQ1.pdf")
     plt.close()
     # Plot potential energy vs. steps
-    plt.title("Potential Energy (eV) vs. Steps")
-    plt.xlabel("Steps")
-    plt.ylabel("Potential Energy")
+    plt.title("Potential Energy (PE) vs. Time (t)")
+    plt.xlabel("t [ps]")
+    plt.xlim([0.00, 0.10])
+    plt.ylabel("PE [eV]")
     plt.grid('on')
     plt.plot(steps, potentialEnergy)
-    plt.savefig("PotenVsStepsQ1.pdf")
+    plt.plot([0.02, 0.02], [-1950, -1890], label="equilibration time")
+    plt.legend()
+    plt.savefig("PotenVsTimeQ1.pdf")
     plt.close()
     # Plot kinetic energy vs. steps
-    plt.title("Kinetic Energy (eV) vs. Steps")
-    plt.xlabel("Steps")
-    plt.ylabel("Kinetic Energy")
+    plt.title("Kinetic Energy (KE) vs. Time (t)")
+    plt.xlabel("t [ps]")
+    plt.xlim([0.00, 0.10])
+    plt.ylabel("KE [eV]")
     plt.grid('on')
     plt.plot(steps, kineticEnergy)
-    plt.savefig("KineticVsStepQ1.pdf")
+    plt.plot([0.02, 0.02], [10, 80], label="equilibration time")
+    plt.legend()
+    plt.savefig("KineticVsTimeQ1.pdf")
     plt.close()
 
 # PARTII, Questions 3 - 5
@@ -66,7 +76,7 @@ def thermoPropertiesPd():
     # Question 2
     def velocityDistribution():
         # Process the LAMMPS velocities.dump file
-        velocitiesFile = open("velocitiesdump2.txt", "r") # Open the file
+        velocitiesFile = open("velocitiesdumpP2Q1.txt", "r") # Open the file
         lines2 = velocitiesFile.readlines() # Put all lines of the file into a list
 
         # Create a dynamic list to hold velocity data
@@ -81,14 +91,17 @@ def thermoPropertiesPd():
             else: # Pattern matches, store the data
                 velocities.append(float(m2.group(3))) # Take only group 3, the vx
 
+        print("size of velocities: ", len(velocities))
+
         # Randomly select 10,000 data points from the velocity data to generare a distribution
         upperBound = len(velocities) # Upper bound for indexing into the array
-        randomVel = np.arange(10000) # Create an array to hold the sample of 1000 velocities
-        for i in range(0, 10000): # TODO: Should only be 100 data points, 10,000 looks better though. Need to remove eq. data?
-            randomIndex = np.random.randint(0, upperBound)
+        randomVel = np.arange(100000) # Create an array to hold the sample of 1000 velocities
+        for i in range(0, 100000): # TODO: Should only be 100 data points, 10,000 looks better though. Need to remove eq. data?
+            randomIndex = np.random.randint(200, upperBound)
             randomVel[i] = velocities[randomIndex]
 
-        ## Plot experimental and exact distribution
+        # Plot experimental and exact distribution
+        bins = [-10,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,10]
         plt.hist(randomVel, 16)
 
         # Calcualte exact distribution
@@ -100,12 +113,12 @@ def thermoPropertiesPd():
         distn = np.arange(21, dtype=float)
         i = 0
         for vel in velocitiesExact: # vel has units of Angstroms/picosecond
-            distn[i] = 11000.0 * np.power((m / (2.0 * np.pi * kB * T)), 1.0/2.0) * np.exp((-1.0 * m * np.power(vel, 2)) / (2.0 * kB * T))
+            distn[i] = 110000.0 * np.power((m / (2.0 * np.pi * kB * T)), 1.0/2.0) * np.exp((-1.0 * m * np.power(vel, 2)) / (2.0 * kB * T))
             i += 1
         plt.title("Maxwell Boltzman Distribution")
-        plt.xlabel("Velocity (Angstrom / ps)")
+        plt.xlabel("Velocity ($\AA$ / ps)")
         plt.ylabel("Density")
-        plt.plot(velocitiesExact, distn, label='Exact')
+        plt.plot(velocitiesExact, distn, label='Exact Distribution')
         plt.legend()
         plt.savefig("velocityDistributionQ2.pdf")
         plt.grid('on')
@@ -155,6 +168,7 @@ def thermoPropertiesPd():
         # Calculate the correlation function
         averagePressure = np.average(pressures) # Calcualte avergae pressure
         correlationFunction = [] # List to hold correlation values
+        correlationSteps = np.arange(0, len(pressures))
         for t in range(0, len(pressures)): # For each time dispalcement t..
             terms = []
             for t0 in range(0, len(pressures)): # For each time origin..
@@ -172,10 +186,11 @@ def thermoPropertiesPd():
 
         # Plot the semilog of the correlation function from 0 - 1 ps
         logCorrelationFunction = np.log(correlationFunction[:100])
-        plt.title("Semilog of Time-Displaced Correlation vs Steps")
-        plt.xlabel("Steps")
+        plt.title("Semilog of Time-Displaced Correlation C(t) vs. Time (t)")
+        plt.xlabel("t [ps]")
         plt.ylabel("log(C(t))")
-        plt.plot(logCorrelationFunction)
+        correlationTimes = correlationSteps[:100] * 0.01
+        plt.plot(correlationTimes, logCorrelationFunction)
         plt.grid('on')
         plt.savefig("semiLogCorrelationFunctionPressure.pdf")
         plt.close()
@@ -184,11 +199,16 @@ def thermoPropertiesPd():
         # Splice data to consider a regions that looks linear
         logCorrelationFunction = logCorrelationFunction[:200]
         logCorrelationFunction = logCorrelationFunction[25:]
-        slope = np.polyfit(np.arange(len(logCorrelationFunction)), logCorrelationFunction, 1)[0]
-        # print("Slope of the semilog plot: ", slope[0])
+        correlationTimes = correlationTimes[:200]
+        correlationTimes = correlationTimes[25:]
+        fittingParameters = np.polyfit(correlationTimes, logCorrelationFunction, 1)[0]
+        slope = fittingParameters[0]
+        intercept = fittingParameters[1]
+        print("Slope of the semilog plot: ", slope)
+        print("intercept of the semilog plot: ", intercept)
         correlationTime = -1.0 / slope # Currently has units of Steps
-        print("Correlation time (units of steps): ", correlationTime)
-        correlationTime *= 0.001 # Covert from units of Steps to units of ps
+        #print("Correlation time (units of steps): ", correlationTime)
+        #correlationTime *= 0.001 # Covert from units of Steps to units of ps
         print("Correlation time (units of ps): ", correlationTime)
 
     # Question 4 and 5
@@ -228,16 +248,18 @@ def thermoPropertiesPd():
         fittingParameters = np.polyfit(volumes, avg_pressures600K, 1)
         slope = fittingParameters[0]
         intercept = fittingParameters[1]
+        print("slope of LOB for 600K: ", slope)
+        print("intercept of LOB for 600K: ", intercept)
         zeroPressureVolumeAt600K = (-1 * intercept) / slope
-        print("zeroPressureVolume: ", zeroPressureVolumeAt600K)
+        print("zeroPressureVolume @ 600K: ", zeroPressureVolumeAt600K)
         zeroPressureLatticeConstantAt600K = np.power(zeroPressureVolumeAt600K, 1.0/3.0)
-        print("zeroPressureLatticeConstant: ", zeroPressureLatticeConstantAt600K)
+        print("zeroPressureLatticeConstant @ 600K: ", zeroPressureLatticeConstantAt600K)
         latticeConstantAt600K = zeroPressureLatticeConstantAt600K
 
         # Plot line of best fit and pressure data
-        plt.title("Pressure vs Unit Cell Volume")
-        plt.xlabel("Volume (Angstrom^3)")
-        plt.ylabel("Pressure (bars)")
+        plt.title("Pressure (P) vs. Unit Cell Volume (V)\nat 600K")
+        plt.xlabel("V ($\AA^3$)")
+        plt.ylabel("P (bars)")
         plt.grid('on')
         lineOfBestFit = []
         for v in volumes:
@@ -249,7 +271,7 @@ def thermoPropertiesPd():
 
         # Calculate isothermal bulk modulus
         bulkModulus = (-1 * zeroPressureVolumeAt600K) * slope
-        print("isothermal bulk modulus: ", bulkModulus)
+        print("isothermal bulk modulus of Pd @ 600K: ", bulkModulus)
 
         # Question 5
         # Calculate average equilibrium pressures and plot vs volume for 950K
@@ -272,8 +294,8 @@ def thermoPropertiesPd():
             avg_pressures950K.append(np.average(temp))
 
         # Plot the average equilbirum pressures vs volume for 950K
-        plt.title("Average Equilibrium Pressure vs Unit Cell Volume/nat 950K")
-        plt.xlabel("Volume (Angstrom^3)")
+        plt.title("Pressure (P) vs. Unit Cell Volume(V)/nat 950K")
+        plt.xlabel("Volume ($\AA^3$)")
         plt.ylabel("Pressure (bars)")
         plt.grid('on')
         plt.scatter(volumes, avg_pressures950K)
@@ -284,16 +306,22 @@ def thermoPropertiesPd():
         fittingParameters = np.polyfit(volumes, avg_pressures950K, 1)
         slope = fittingParameters[0]
         intercept = fittingParameters[1]
+        print("slope of LOB for 950K: ", slope)
+        print("intercept of LOB for 950K: ", intercept)
         zeroPressureVolumeAt950K = (-1 * intercept) / slope
-        print("zeroPressureVolume: ", zeroPressureVolumeAt950K)
+        print("zeroPressureVolume @ 950K: ", zeroPressureVolumeAt950K)
         zeroPressureLatticeConstantAt950K = np.power(zeroPressureVolumeAt950K, 1.0/3.0)
-        print("zeroPressureLatticeConstant: ", zeroPressureLatticeConstantAt950K)
+        print("zeroPressureLatticeConstant @ 950K: ", zeroPressureLatticeConstantAt950K)
         latticeConstantAt950K = zeroPressureLatticeConstantAt950K
 
+        # Calculate isothermal bulk modulus
+        bulkModulus = (-1 * zeroPressureVolumeAt600K) * slope
+        print("isothermal bulk modulus of Pd @ 950K: ", bulkModulus)
+
         # Plot line of best fit and pressure data for 950K
-        plt.title("Pressure vs Unit Cell Volume\nat 950K")
-        plt.xlabel("Volume (Angstrom^3)")
-        plt.ylabel("Pressure (bars)")
+        plt.title("Pressure (P) vs. Unit Cell Volume (V)\nat 950K")
+        plt.xlabel("V ($\AA^3$)")
+        plt.ylabel("P (bars)")
         plt.grid('on')
         lineOfBestFit = []
         for v in volumes:
@@ -312,12 +340,16 @@ def thermoPropertiesPd():
         temps = [600, 950]
         latticeParameters = [latticeConstantAt600K, latticeConstantAt950K]
         plt.title("Lattice Parameter (a) vs Temperature (T)")
-        plt.xlabel("T (K)")
-        plt.ylabel("a (Angstrom)")
+        plt.xlabel("T [K]")
+        plt.ylabel("a [$\AA$]")
         plt.grid('on')
         plt.scatter(temps, latticeParameters)
         fittingParameters = np.polyfit(temps, latticeParameters, 1)
         slope = fittingParameters[0]
+        intercept = fittingParameters[1]
+        print("slope of LOB for expansion coefficient: ", slope)
+        print("intercept of LOB for expansion coefficient: ", intercept)
+        print("Slope of line from linear fit of a vs T: ", slope)
         intercept = fittingParameters[1]
         # for v in volumes:
         lineOfBestFit = []
@@ -342,7 +374,6 @@ def thermoPropertiesPdH():
     # Question 6
     def calculateLatticeConstantAndBulkModulus():
 
-        # Question 6
         # Calculate lattice parameter and bulk modulus
         avg_pressures = [] # average the pressure over each file
         for i in range(0, 10):
@@ -381,15 +412,19 @@ def thermoPropertiesPdH():
         slope = fittingParameters[0]
         intercept = fittingParameters[1]
         zeroPressureVolume = (-1 * intercept) / slope
-        print("zeroPressureVolume: ", zeroPressureVolume)
+        print("zeroPressureVolume with H atoms @ 950K: ", zeroPressureVolume)
         zeroPressureLatticeConstant = np.power(zeroPressureVolume, 1.0/3.0)
-        print("zeroPressureLatticeConstant: ", zeroPressureLatticeConstant)
+        print("zeroPressureLatticeConstant with H atoms at 950K: ", zeroPressureLatticeConstant)
         latticeConstant = zeroPressureLatticeConstant
 
+        # Calculate isothermal bulk modulus
+        bulkModulus = (-1 * zeroPressureVolume) * slope
+        print("isothermal bulk modulus of Pd w/ H atoms: ", bulkModulus)
+
         # Plot line of best fit and pressure data
-        plt.title("Pressure (P) vs Unit Cell Volume (V)")
-        plt.xlabel("V (Angstrom^3)")
-        plt.ylabel("Pressure (bars)")
+        plt.title("Pressure (P) vs. Unit Cell Volume (V)\nfor $Pd_{500}H_{10}$")
+        plt.xlabel("V [$\AA^3$]")
+        plt.ylabel("P [bars]")
         plt.grid('on')
         lineOfBestFit = []
         for v in volumes:
@@ -411,9 +446,8 @@ def thermoPropertiesPdH():
 
     # Questions 7, 9
     def problem79():
-        print("Hello World! from question7")
+        print("Hello World! from questions 7 and 9")
 
-        # TODO: Parse the coordinate dump file for coordinates of a single H atom
         # Process the LAMMPS file with H atoms coordinates
         hydrogenAtomCoordinateDataFile = open("coordinatesHdump.txt", "r") # Open the file
         lines = hydrogenAtomCoordinateDataFile.readlines() # Put all lines of the file into a list
@@ -434,9 +468,9 @@ def thermoPropertiesPdH():
                 zu.append(m.group(5))
 
         # Plot x vs y coordinate of single H-atom
-        plt.title("y coordinate vs x coordinate\nof single H-atom")
-        plt.xlabel("x (Angstrom)")
-        plt.ylabel("y (Angstrom)")
+        plt.title("Unwrapped y coordinate (yu) vs. Unwrapped x coordinate (xu)\nof single H-atom in $Pd_{500}H_{10}$")
+        plt.xlabel("xu [$\AA$]")
+        plt.ylabel("yu [$\AA$]")
         plt.grid('on')
         plt.plot(xu, yu)
         plt.savefig("yVsXHAtomCoordinateQ7.pdf")
@@ -456,20 +490,9 @@ def thermoPropertiesPdH():
                         coordinateTuple = (float(m.group(3)), float(m.group(4)), float(m.group(5))) # (x, y, z)
                         ithHydrogenData.append(coordinateTuple)
             hydrogenDatas.append(ithHydrogenData)
-        print("len of hydrogen datas: ", len(hydrogenDatas))
-        print("len of ith hydrogen data: ", len(hydrogenDatas[0]))
-        print("len of ith hydrogen data at time step zero: ", len(hydrogenDatas[0][0]))
-
-        # # Key
-        # hyrdogenDatas = [h_atom1_data, h_atom2_data, ..., h_atom10_data]
-        # hydrogenDatas[i] = [(x0, y0, z0), (x1, y1, z1), ... ,(x50000, y50000, z50000)]
-        # hydrogenDatas[i][0] = xj j = 0, 1, 2, ... , 50000
-        # hydrogenDatas[i][1] = yj j = 0, 1, 2, ... , 50000
-        # hydrogenDatas[i][2] = zj j = 0, 1, 2, ... , 50000
 
         # Caclulate the average MSD for one hydrogen as a test
         hydrogenMSD = [] # Create a list to hold MSD data for each time displacement
-        hD = hydrogenDatas[0] # Start simple. Just calculate the MSSF
         timeDisplacements = np.arange(0, 5000)
         for t in timeDisplacements: # For each time dispalcement t..
             ithHydrogenMSDAtT = [] # list will hold the average MSD for each H atoms at a given time displacement
@@ -483,25 +506,24 @@ def thermoPropertiesPdH():
                     eucldieanDistance = ((rt[0] - r0[0])**2 + (rt[1] - r0[1])**2 + (rt[2] - r0[2])**2)
                     terms.append(eucldieanDistance)
                 ithHyrdogenMSD = np.average(terms)
-                print(ithHyrdogenMSD)
                 ithHydrogenMSDAtT.append(ithHyrdogenMSD)
             hydrogenMSD.append(np.average(ithHydrogenMSDAtT))
-            # Average the displacements for the given time displacement
-        # print("length of hydrogenMSF: ", len(hydrogenMSD))
-        # print("length of timeDisplacements: ", len(timeDisplacements))
-
 
         # Find line of best fit for MSD data
         fittingParameters = np.polyfit(timeDisplacements, hydrogenMSD, 1)
         slope = fittingParameters[0]
         intercept = fittingParameters[1]
-
-        # TODO: Calculate diffusion coefficient
-
         lineOfBestFit = []
         for t in timeDisplacements:
             lineOfBestFit.append(slope * t + intercept)
         timeDisplacements *= 0.01 # Convert from steps to ps
+
+        # Calculate diffusion coefficient
+        diffusionCoefficient = slope / 6.0
+        print("slope of LOB from MSD: ", fittingParameters[0])
+        print("intercepet of LOB from MSD: ", fittingParameters[1])
+        print("intercepet of LOB from MSD: ", fittingParameters[1])
+        print("diffusionCoefficient from MSD: ", diffusionCoefficient)
 
         # Plot MSD data form LAMMPS
         MSDDataFile = open("MSDData.txt", "r") # Open the file
@@ -523,13 +545,13 @@ def thermoPropertiesPdH():
                 msd.append(msdVal)
 
         # Plotting
-        plt.title("Mean Square Displacement (MSD) vs. Time Displacement (dt)")
+        plt.title("Mean Square Displacement (MSD) vs. Time Displacement (dt)]\nof single H-atom in $Pd_{500}H_{10}$")
         plt.xlabel("dt [ps]")
-        plt.ylabel("MSD [Angstrom^2]")
+        plt.ylabel("MSD [$\AA^2$]")
         plt.plot(timeDisplacements, hydrogenMSD, label =  'Calculated MSD')
         plt.plot(step,  msd, label = 'LAMMPS MSD')
         plt.plot(timeDisplacements, lineOfBestFit, label = 'Line of best fit')
-        plt.legend()
+        plt.legend(loc = 'lower right')
         plt.savefig("MSDVsTimeDisplacement.pdf")
         plt.close()
 
@@ -558,107 +580,54 @@ def thermoPropertiesPdH():
                     velocityTuple = (float(m.group(3)), float(m.group(4)), float(m.group(5))) # (vx, vy, vz)
                     ithHydrogenData.append(velocityTuple)
             hydrogenDatas.append(ithHydrogenData)
-        print("len of hydrogen datas: ", len(hydrogenDatas))
-        print("len of ith hydrogen data: ", len(hydrogenDatas[0]))
-        print("len of ith hydrogen data at time step zero: ", len(hydrogenDatas[0][0]))
 
-        # TODO: Calculate velocity autocorrelation function (VACF)
-        # TODO: Plot VACF from t = 0.0 to 0.2 ps
-        # TODO: Calculate diffusion coefficient
-        # TODO: Compare diffusion coefficient to problem 9
+        # Caclulate the VACF
+        hydrogenVACF = [] # Create a list to hold MSD data for each time displacement
+        timeDisplacements = np.arange(0, 200, dtype='int')
 
-    # Solve the problems
-    # calculateLatticeConstantAndBulkModulus()
-    # problem79()
+        for t in timeDisplacements: # For each time dispalcement t..
+            ithHydrogenVACFAtT = [] # list will hold the average MSD for each H atoms at a given time displacement
+            for hD in hydrogenDatas: # For each hydrogen calculate the MSD at given time displacement, add to list above, then average
+                terms = []
+                for t0 in range(0, len(hD)): # Calculate the ith hydrogens data for given time dispalcement
+                    if (t0 + t >= len(hD)):
+                        break;
+                    vt = hD[t0 + t]
+                    v0 = hD[t0]
+                    dotProduct = (vt[0] * v0[0]) + (vt[1] * v0[1]) + (vt[2] * v0[2])
+                    terms.append(dotProduct)
+                ithHyrdogenVACF = np.average(terms)
+                ithHydrogenVACFAtT.append(ithHyrdogenVACF)
+            hydrogenVACF.append(np.average(ithHydrogenVACFAtT))
+
+        # Plot the VACF from t = 0.0 to 0.2 ps
+        plt.title("Velocity Autocorrelation Function (VACF) vs. Time Displacement (dt)")
+        plt.xlabel("dt [ps]")
+        plt.ylabel("VACF [$ps^2/\AA^2$]")
+        timeDisplacements = np.arange(0, 200, dtype = 'float') # Convert time displacements to ps
+        timeDisplacements *= 0.001
+        plt.plot(timeDisplacements, hydrogenVACF)
+        plt.savefig("VACFQ10.pdf")
+        plt.close()
+
+        # Calculate diffusion coefficient
+        diffusionCoefficient = np.trapz(hydrogenVACF)
+        print("diffusion coefficient from VACF: ", diffusionCoefficient)
+
+        # Compare diffusion coefficient to problem 9
+
+    # SOLVE THE PROBLEMS
     calculateLatticeConstantAndBulkModulus()
+    problem79()
+    velocityAutoCorrelationFxn()
 
 
 
 
 ####RUN####
-# print("PARTI")
-# plotEnergies() # PARTI, Question 1
-# print("PARTII")
-# thermoPropertiesPd() # PARTII, Questions 2, 3, 4, 5
+print("PARTI")
+plotEnergies() # PARTI, Question 1
+print("PARTII")
+thermoPropertiesPd() # PARTII, Questions 2, 3, 4, 5
 print("PARTIII")
 thermoPropertiesPdH() # PARTIII, Questions 6, 7, 8, 9, 10
-
-
-
-
-# Scratch
-# ##########PRACTICE############
-# m2 = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s*)", "ITEM: ATOMS id type vx vy vz")
-# if (m2 is None):
-#     print("NONE - NO MATCH")
-# else:
-#     print(m2.group(0), "ground(0)")
-#     print(m2.group(1), "group(1)")
-#     print(m2.group(2), "group(2)")
-#     print(m2.group(3), "group(3)")
-#     print(m2.group(4), "group(4)")
-#     print(m2.group(5), "group(5)")
-
-# ##########PRACTICE############
-# # m = re.match(r"(\w+) (\w+)", "Isaac Newton, physicist")
-# m = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s*)", " 0         1112   -1874.2011    -1945.926    71.724903, physicist")
-# print(m.group(0), "0")
-# print(m.group(1), "1")
-# print(m.group(2), "2")
-# print(m.group(3), "3")
-# print(m.group(4), "4")
-# print(m.group(5), "5")
-
-# ##########PRACTICE############
-# # m = re.match(r"(\w+) (\w+)", "Isaac Newton, physicist")
-# m = re.match("(?:\s*)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s+)(-?[0-9]*\.?[0-9]*)(?:\s*)", " 0         1112   -1874.2011    -1945.926    71.724903, physicist")
-# print(m.group(0), "0")
-# print(m.group(1), "1")
-# print(m.group(2), "2")
-# print(m.group(3), "3")
-# print(m.group(4), "4")
-# print(m.group(5), "5")
-
-# ##########PRACTICE############
-# a = [5, 4, 3, 2, 1]
-# b = [0, 1, 2, 3, 4]
-#
-# i = 0
-# j = 5, 4, 3, 2, 1
-# k = 5, 4, 3, 2, 1
-#
-# i = 1
-# j = 4, 3, 2, 1
-# k = 5, 4, 3, 2
-#
-# i = 2
-# j = 3, 2, 1
-# k = 5, 4, 3
-#
-# i = 3
-# j = 2, 1--
-# k = 5, 4
-#
-# i = 4
-# j = 1
-# k = 5
-
-# data = [5, 4, 3, 2, 1]
-# avg_data = np.average(data)
-# corr_fxn = []
-#
-#
-# for t in range(0, len(data)):
-#     temps = []
-#     print("t: ", t)
-#     for t0 in range(0, len(data)):
-#         print("t0: ", t0)
-#         if (t0 + t >= len(data)):
-#             break;
-#         print("data[t0 + t]: ", data[t0 + t], " ", "data[t0]: ", data[t0])
-#         temps.append((data[t0 + t] - avg_data) * (data[t0] - avg_data))
-#     corr_fxn.append(np.average(temps))
-# print(corr_fxn)
-
-
-
