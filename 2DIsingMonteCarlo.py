@@ -1,5 +1,4 @@
 # Xavier Linn
-# MSE 215, Project 3, Fall 2017
 # A Monte Carlo Problem
 # Metropolis algorithm to compute the properties of a 2D Ising models.
 
